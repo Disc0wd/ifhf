@@ -161,7 +161,7 @@ Headline results (i5-10310U laptop, noisy; full tables and method in
 | Search `firefox` | 2.69 s | 13 ms |
 | Details by exact ID | 1.56 s | 58 ms |
 | Startup | 32 ms | 2 ms |
-| Peak memory (search) | 449 MB | 20 MB |
+| Peak memory (search) | 439 MiB | 19 MiB |
 | List installed / remotes / updates / install | baseline | about equal |
 | Remove / installed-app `info` | baseline | 40–85 ms **slower** (extra lookups) |
 | First search after index deleted | n/a | 0.58 s |

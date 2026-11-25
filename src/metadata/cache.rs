@@ -12,7 +12,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-const MAGIC: &str = "IFHF-INDEX\t1";
+/// The IFHF version is part of the header: a new release may parse metadata differently, so an
+/// index written by another version is ignored and rebuilt.
+const MAGIC: &str = concat!("IFHF-INDEX\t1\t", env!("CARGO_PKG_VERSION"));
 const KW_SEP: char = '\u{1f}';
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -364,6 +366,20 @@ mod tests {
         assert_eq!(back.watch, idx.watch);
         assert_eq!(back.sources, idx.sources);
         assert_eq!(back.apps, idx.apps);
+    }
+
+    #[test]
+    fn index_from_another_version_is_ignored() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("i");
+        write(&p, &sample()).unwrap();
+        let text = fs::read_to_string(&p).unwrap();
+        let old = text.replacen(env!("CARGO_PKG_VERSION"), "0.0.0-old", 1);
+        fs::write(&p, old).unwrap();
+        assert!(
+            read(&p).is_none(),
+            "an index written by a different version must be rebuilt"
+        );
     }
 
     #[test]

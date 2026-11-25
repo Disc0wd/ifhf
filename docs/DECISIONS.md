@@ -40,7 +40,7 @@ versioning) are implemented. Interactive TUI mode (spec 3.3, explicitly not requ
 From `bench/RESULTS.md` (i5-10310U, `powersave` governor, noisy: σ of 5–15 ms on fast commands):
 
 - **Large wins (no Flatpak process involved):** search ~200× faster, details-by-ID ~25×, startup ~15×,
-  memory ~24× lower (20 MB vs 450 MB for a search).
+  memory ~23× lower (19 MiB vs 439 MiB for a search).
 - **Parity within noise:** `list`, `remotes`, `updates`, `install` (the work is Flatpak's own).
 - **Slower by design:** `remove` (~+60–85 ms), `info` on an installed app (~+40 ms), `updates` (~+0.1 s)
   and `list` (+0–15 ms). Reasons: `remove` and `install` ask Flatpak what is installed first (to resolve

@@ -1,129 +1,369 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IFHF — a friendly command line for Flatpak</title>
-<meta name="description" content="Install, remove and search Flatpak apps by ordinary name. Searches in milliseconds, not seconds.">
+<title>ifhf: Flatpak search in milliseconds</title>
+<meta name="description" content="A command line for Flatpak that installs, removes and searches apps by name. Search takes 13 ms instead of 2.69 s.">
+<meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1015" media="(prefers-color-scheme: dark)">
+<link rel="preload" href="fonts/SchibstedGrotesk.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-:root{--bg:#fbfaf8;--fg:#1d1d1f;--mute:#6b6b70;--line:#e4e1db;--card:#fff;--acc:#1f6f5c;--fl:#b9b4aa;--ih:#1f6f5c;--win:#1f6f5c;--lose:#b3412c;--code:#f1eee8}
-@media(prefers-color-scheme:dark){:root{--bg:#151617;--fg:#ecebe8;--mute:#9a9a9f;--line:#2b2d2f;--card:#1b1d1e;--acc:#5fcfb2;--fl:#55524c;--ih:#5fcfb2;--win:#5fcfb2;--lose:#ef8a73;--code:#202223}}
+@font-face{font-family:"Schibsted Grotesk";src:url(fonts/SchibstedGrotesk.woff2) format("woff2");font-weight:400 800;font-display:swap}
+@font-face{font-family:"JetBrains Mono";src:url(fonts/JetBrainsMono.woff2) format("woff2");font-weight:400 700;font-display:swap}
+
+:root{
+  --bg:#eef1f4; --ink:#14202b; --mute:#566370; --rule:#cdd5dc;
+  --accent:#2f5bff; --accent-ink:#1f45d6; --steel:#8a94a0; --warn:#c2371d;
+  --term:#0f1720; --term-ink:#d7dee6; --term-mute:#7d8a98; --term-rule:#233140; --term-accent:#8fa8ff;
+  --sans:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0b1015;--ink:#e6ebf0;--mute:#9aa6b2;--rule:#232d37;--accent:#7f9bff;--accent-ink:#a9bcff;--steel:#66717d;--warn:#ff8a73;
+        --term:#131b24;--term-rule:#263444}
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:60rem;margin:0 auto;padding:3rem 1.25rem 5rem}
-h1{font-size:clamp(2.4rem,7vw,4rem);margin:.2em 0 .1em;letter-spacing:-.03em;line-height:1}
-h2{margin:3.2rem 0 .8rem;font-size:1.5rem;letter-spacing:-.01em}
-.lede{font-size:1.25rem;color:var(--mute);max-width:40rem;margin:.4rem 0 1.4rem}
-a{color:var(--acc)}
-.cta a{display:inline-block;margin:0 .6rem .6rem 0;padding:.55rem 1rem;border:1px solid var(--line);border-radius:.5rem;text-decoration:none;font-weight:600}
-.cta a.p{background:var(--acc);color:var(--bg);border-color:var(--acc)}
-pre,code{font:.92em ui-monospace,SFMono-Regular,Menlo,monospace}
-pre{background:var(--code);border:1px solid var(--line);border-radius:.6rem;padding:1rem 1.1rem;overflow:auto;margin:1rem 0}
-code{background:var(--code);padding:.1em .35em;border-radius:.3em} pre code{background:none;padding:0}
-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:.6rem;overflow:hidden}
-th,td{padding:.55rem .8rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
-thead th{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
-tr:last-child>*{border-bottom:0}
-.bench td{position:relative;min-width:7rem}
-.bar{display:block;height:.55rem;border-radius:.3rem;margin-bottom:.15rem}
-.fl{background:var(--fl)} .ih{background:var(--ih)}
-.v{font-variant-numeric:tabular-nums;font-size:.9rem}
-.verdict{font-weight:700;white-space:nowrap} .win .verdict{color:var(--win)} .lose .verdict{color:var(--lose)} .even .verdict{color:var(--mute)}
-.legend{color:var(--mute);font-size:.9rem;margin:.6rem 0}
-.legend i{display:inline-block;width:.8rem;height:.8rem;border-radius:.2rem;vertical-align:-.1em;margin-right:.3rem}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1rem}
-.card{background:var(--card);border:1px solid var(--line);border-radius:.7rem;padding:1rem 1.1rem}
-.card h3{margin:.1em 0 .3em;font-size:1.05rem} .card p{margin:0;color:var(--mute);font-size:.95rem}
-.note{color:var(--mute);font-size:.92rem}
-footer{margin-top:4rem;color:var(--mute);font-size:.9rem;border-top:1px solid var(--line);padding-top:1rem}
-@media(max-width:36rem){th,td{padding:.45rem .5rem}.bench td{min-width:5.5rem}}
-</style></head><body><main>
-<h1>IFHF</h1>
-<p class="lede">A friendly command line for Flatpak. Install, remove and search apps by their ordinary name — no application IDs to memorise.</p>
-<p class="cta"><a class="p" href="https://github.com/Disc0wd/ifhf">Source on GitHub</a><a href="https://github.com/Disc0wd/ifhf/blob/main/README.md">Documentation</a><a href="https://github.com/Disc0wd/ifhf/blob/main/bench/RESULTS.md">Full benchmarks</a></p>
-<pre><code>$ ifhf install spotify
-Spotify
-Online music streaming service
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 1.0625rem/1.6 var(--sans);text-rendering:optimizeLegibility}
+a{color:var(--accent-ink);text-underline-offset:.2em;text-decoration-thickness:1px}
+a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+code,kbd,samp,pre{font-family:var(--mono)}
+.wrap{max-width:70rem;margin:0 auto;padding:0 clamp(1rem,4vw,2.5rem)}
 
-Application: com.spotify.Client
-Remote:      flathub
-Scope:       user
+/* top bar */
+.top{display:flex;justify-content:space-between;align-items:baseline;padding:1.4rem 0}
+.mark{font:700 1.15rem var(--mono);letter-spacing:-.02em;color:var(--ink);text-decoration:none}
+.top nav{display:flex;gap:1.4rem;font-size:.95rem}
+.top nav a{color:var(--mute);text-decoration:none}
+.top nav a:hover{color:var(--ink);text-decoration:underline}
 
-Install Spotify? [Y/n]</code></pre>
-<p>IFHF is a thin layer. <strong>Flatpak still downloads, verifies and deploys everything</strong>; IFHF never bypasses its signatures or permissions, runs no daemon and needs no server.</p>
+/* hero */
+.hero{padding:clamp(2rem,6vw,4.5rem) 0 1rem}
+h1{font:800 clamp(2.5rem,7.2vw,5.4rem)/.98 var(--sans);letter-spacing:-.035em;margin:0;max-width:16ch;text-wrap:balance}
+.lede{font-size:clamp(1.1rem,2.2vw,1.35rem);line-height:1.5;max-width:38rem;color:var(--mute);margin:1.4rem 0 0}
+.lede b{color:var(--ink);font-weight:600}
 
-<h2>Why it is fast</h2>
-<p>Flatpak's own <code>search</code> re-reads about 50&nbsp;MB of AppStream XML on every call. IFHF parses it once into a small local index and then answers from memory — a warm search never starts a subprocess. The first search after the index is deleted takes 577 ms; every one after that is milliseconds.</p>
-<p class="legend"><i style="background:var(--fl)"></i>flatpak &nbsp; <i style="background:var(--ih)"></i>ifhf &nbsp; (shorter is faster)</p>
-<table class="bench"><thead><tr><th>Task</th><th>flatpak</th><th>ifhf</th><th></th></tr></thead><tbody>
-<tr class="win"><th scope="row">Search “firefox”</th>
-<td><span class="bar fl" style="width:100.0%"></span><span class="v">2.69 s</span></td>
-<td><span class="bar ih" style="width:1.5%"></span><span class="v">13 ms</span></td>
-<td class="verdict">202× faster</td></tr>
-<tr class="win"><th scope="row">Search “browser”</th>
-<td><span class="bar fl" style="width:100.0%"></span><span class="v">2.63 s</span></td>
-<td><span class="bar ih" style="width:1.5%"></span><span class="v">12 ms</span></td>
-<td class="verdict">211× faster</td></tr>
-<tr class="win"><th scope="row">Details by exact ID</th>
-<td><span class="bar fl" style="width:100.0%"></span><span class="v">1.56 s</span></td>
-<td><span class="bar ih" style="width:3.7%"></span><span class="v">58 ms</span></td>
-<td class="verdict">27× faster</td></tr>
-<tr class="win"><th scope="row">Startup</th>
-<td><span class="bar fl" style="width:100.0%"></span><span class="v">32 ms</span></td>
-<td><span class="bar ih" style="width:6.0%"></span><span class="v">2.0 ms</span></td>
-<td class="verdict">17× faster</td></tr>
-<tr class="lose"><th scope="row">List installed apps</th>
-<td><span class="bar fl" style="width:68.6%"></span><span class="v">33 ms</span></td>
-<td><span class="bar ih" style="width:100.0%"></span><span class="v">49 ms</span></td>
-<td class="verdict">1.5× slower</td></tr>
-<tr class="lose"><th scope="row">List remotes</th>
-<td><span class="bar fl" style="width:79.8%"></span><span class="v">29 ms</span></td>
-<td><span class="bar ih" style="width:100.0%"></span><span class="v">36 ms</span></td>
-<td class="verdict">1.3× slower</td></tr>
-<tr class="even"><th scope="row">Check for updates</th>
-<td><span class="bar fl" style="width:94.8%"></span><span class="v">2.24 s</span></td>
-<td><span class="bar ih" style="width:100.0%"></span><span class="v">2.36 s</span></td>
-<td class="verdict">≈ equal</td></tr>
-<tr class="win"><th scope="row">Install one app</th>
-<td><span class="bar fl" style="width:100.0%"></span><span class="v">1.72 s</span></td>
-<td><span class="bar ih" style="width:75.7%"></span><span class="v">1.30 s</span></td>
-<td class="verdict">1.3× faster</td></tr>
-<tr class="lose"><th scope="row">Remove one app</th>
-<td><span class="bar fl" style="width:72.7%"></span><span class="v">225 ms</span></td>
-<td><span class="bar ih" style="width:100.0%"></span><span class="v">309 ms</span></td>
-<td class="verdict">1.4× slower</td></tr>
-<tr class="lose"><th scope="row">Info on an installed app</th>
-<td><span class="bar fl" style="width:35.3%"></span><span class="v">24 ms</span></td>
-<td><span class="bar ih" style="width:100.0%"></span><span class="v">67 ms</span></td>
-<td class="verdict">2.8× slower</td></tr>
-</tbody></table>
-<p class="note">Measured with <code>hyperfine</code> on a 2020 laptop (i5-10310U, <code>powersave</code> governor), Flatpak 1.18.4; the machine is noisy (σ of 5–15&nbsp;ms on fast commands). Where IFHF only wraps a Flatpak operation, it matches Flatpak or adds a little overhead for its safety checks (resolving names, “already installed”, exact partial-failure reports). Peak memory for a search: 449&nbsp;MB for Flatpak, 20&nbsp;MB for IFHF. Method and raw numbers are in the repository.</p>
+/* the race */
+.race{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:clamp(2rem,5vw,3.2rem) 0 .8rem;background:var(--term-rule);border:1px solid var(--term-rule);border-radius:.5rem;overflow:hidden}
+.pane{background:var(--term);color:var(--term-ink);min-width:0}
+.pane header{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;padding:.85rem 1.1rem .7rem;border-bottom:1px solid var(--term-rule)}
+.pane .cmd{font:500 .9rem var(--mono);color:var(--term-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pane .cmd::before{content:"$ ";color:var(--term-mute)}
+.clock{font:700 clamp(1.5rem,3.4vw,2.2rem)/1 var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em;white-space:nowrap}
+.fl-pane .clock{color:var(--steel)}
+.ih-pane .clock{color:var(--term-accent)}
+.out{margin:0;padding:1rem 1.1rem 1.2rem;font:400 .82rem/1.55 var(--mono);min-height:15.2rem;white-space:pre;overflow:hidden;color:var(--term-ink)}
+.out .m{color:var(--term-mute)}
+.out .id{color:var(--term-accent)}
+.out[hidden]{display:block;visibility:hidden}
+.wait{color:var(--term-mute)}
+.wait::after{content:"▍";animation:blink 1s steps(2) infinite;margin-left:.15em}
+@keyframes blink{50%{opacity:0}}
+.race-note{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:baseline;color:var(--mute);font-size:.9rem;margin:0}
+.replay{font:500 .9rem var(--sans);color:var(--accent-ink);background:none;border:0;padding:.2rem 0;cursor:pointer;text-decoration:underline;text-underline-offset:.2em}
 
-<h2>Two syntaxes, one behaviour</h2>
-<table><thead><tr><th>Natural</th><th>Pacman-style</th><th>Does</th></tr></thead><tbody>
-<tr><td><code>ifhf install spotify discord</code></td><td><code>ifhf -S spotify discord</code></td><td>Install, one confirmation</td></tr>
-<tr><td><code>ifhf remove spotify</code></td><td><code>ifhf -R spotify</code></td><td>Remove (keeps your data)</td></tr>
-<tr><td><code>ifhf search browser</code></td><td><code>ifhf -Ss browser</code></td><td>Search every remote</td></tr>
-<tr><td><code>ifhf info firefox</code></td><td><code>ifhf -Si firefox</code></td><td>Details and install status</td></tr>
-<tr><td><code>ifhf list</code></td><td><code>ifhf -Q</code></td><td>Installed apps</td></tr>
-<tr><td><code>ifhf updates</code> / <code>ifhf update</code></td><td><code>ifhf -Qu</code> / <code>ifhf -Syu</code></td><td>List / apply updates</td></tr>
-<tr><td><code>ifhf sync</code></td><td><code>ifhf -Sy</code></td><td>Refresh metadata</td></tr>
-</tbody></table>
+/* quick install */
+.get{margin:clamp(2rem,5vw,3rem) 0 0;max-width:40rem}
+.get pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:.5rem 0 .5rem;padding:1rem 1.1rem;background:var(--term);color:var(--term-ink);border:1px solid var(--term-rule);border-radius:.5rem;font-size:.86rem;line-height:1.7;overflow:auto}
+.get pre span{color:var(--term-mute)}
+.fine{color:var(--mute);font-size:.92rem;margin:0}
 
-<h2>Built to be safe</h2>
-<div class="grid">
-<div class="card"><h3>Never guesses</h3><p>Several similar matches (say, Firefox in two remotes) means you choose. In scripts it fails with a clear exit code and lists the candidates.</p></div>
-<div class="card"><h3>--yes is not blind</h3><p>It never accepts a fuzzy-only match. <code>install terminal</code> will not quietly pick whatever app has “terminal” in its name.</p></div>
-<div class="card"><h3>Your data is kept</h3><p>Remove leaves app data alone. <code>--delete-data</code> warns, defaults to No, and cannot be switched off in config.</p></div>
-<div class="card"><h3>No shell, validated input</h3><p>Every ID and remote name is checked, and arguments reach Flatpak as separate argv entries — never through a shell.</p></div>
-<div class="card"><h3>Honest failures</h3><p>Multi-app operations report exactly what succeeded and what failed. A failed metadata refresh is an error, never an empty catalogue.</p></div>
-<div class="card"><h3>Tested</h3><p>Unit, integration and end-to-end tests, including the real binary against a stub Flatpak, and a real install/remove cycle in an isolated directory.</p></div>
+/* sections */
+section{padding:clamp(3rem,8vw,5.5rem) 0 0}
+h2{font:700 clamp(1.7rem,3.6vw,2.4rem)/1.1 var(--sans);letter-spacing:-.025em;margin:0 0 1rem;max-width:22ch;text-wrap:balance}
+.split{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(1.5rem,5vw,4rem);align-items:start}
+.prose p{margin:0 0 1rem;max-width:34rem}
+.prose p:last-child{margin-bottom:0}
+.prose strong{font-weight:650}
+.shell{margin:0;padding:1.1rem 1.2rem;background:var(--term);color:var(--term-ink);border:1px solid var(--term-rule);border-radius:.5rem;font:400 .82rem/1.6 var(--mono);overflow:auto;white-space:pre}
+.shell .p{color:var(--term-mute)}
+.shell .id{color:var(--term-accent)}
+.shell .bad{color:#ff9e8c}
+
+/* chart */
+.chart-head{display:flex;gap:1.4rem;align-items:center;flex-wrap:wrap;color:var(--mute);font-size:.92rem;margin:.2rem 0 1.4rem}
+.key i{display:inline-block;width:1.4rem;height:.55rem;border-radius:.1rem;margin-right:.45rem;vertical-align:.05em}
+.key .fl{background:var(--steel)} .key .ih{background:var(--accent)}
+.rows{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)}
+.row,.axis{display:grid;grid-template-columns:13.5rem minmax(0,1fr) 7.5rem;gap:0 1.2rem;align-items:center;padding:.8rem 0;border-bottom:1px solid var(--rule)}
+.axis{padding:.5rem 0 .3rem;border-bottom:0;color:var(--mute);font:400 .72rem var(--mono)}
+.axis .inner{position:relative;height:1rem;margin-right:4.6rem}
+.axis .inner span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.axis .inner span:first-child{transform:none}
+.task{font-weight:550}
+.track .inner{position:relative;margin-right:4.6rem;background:linear-gradient(to right,var(--rule) 1px,transparent 1px) 0 0/25% 100%;border-right:1px solid var(--rule)}
+.line{position:relative;height:1.05rem;display:flex;align-items:center}
+.bar{display:block;height:.5rem;border-radius:0 .15rem .15rem 0;min-width:2px}
+.bar.fl{background:var(--steel)} .bar.ih{background:var(--accent)}
+.val{position:absolute;margin-left:.45rem;font:500 .78rem var(--mono);color:var(--mute);white-space:nowrap}
+.line:last-child .val{color:var(--ink)}
+.verdict{font-weight:650;text-align:right;white-space:nowrap}
+.win .verdict{color:var(--accent-ink)} .lose .verdict{color:var(--warn)} .even .verdict{color:var(--mute);font-weight:500}
+.why{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem clamp(1.5rem,5vw,4rem);margin-top:2rem}
+.why p{margin:0;max-width:34rem}
+.why b{display:block;font-weight:650;margin-bottom:.15rem}
+
+/* syntax */
+.syn{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr);gap:.55rem 2rem;font:400 .9rem/1.5 var(--mono);margin-top:1.5rem;border-top:1px solid var(--rule);padding-top:1rem}
+.syn .h{font:500 .82rem var(--sans);color:var(--mute)}
+.syn .d{font-family:var(--sans);color:var(--mute);font-size:.95rem}
+.syn code{color:var(--ink)}
+
+/* refusals */
+.rules{list-style:none;margin:1.4rem 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.6rem clamp(1.5rem,5vw,4rem)}
+.rules li{margin:0;max-width:34rem;border-left:2px solid var(--accent);padding-left:1rem}
+.rules b{display:block;font-weight:650}
+.rules span{color:var(--mute)}
+
+footer{margin-top:clamp(4rem,9vw,7rem);padding:1.4rem 0 3rem;border-top:1px solid var(--rule);display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;color:var(--mute);font-size:.92rem}
+footer nav{display:flex;gap:1.4rem;flex-wrap:wrap}
+
+@media (max-width:56rem){
+  .race{grid-template-columns:1fr}
+  .out{min-height:0}
+  .split,.why,.rules{grid-template-columns:1fr}
+  .syn{grid-template-columns:1fr;gap:.15rem}
+  .syn .h{display:none}
+  .syn .d{margin:0 0 .9rem}
+  .row,.axis{grid-template-columns:minmax(0,1fr) auto;gap:.15rem 1rem}
+  .row .task{grid-column:1}.row .verdict{grid-column:2;grid-row:1}.row .track{grid-column:1 / -1}
+  .axis{grid-template-columns:minmax(0,1fr)}.axis>div:first-child{display:none}
+  .axis .inner{margin-right:4.2rem}.track .inner{margin-right:4.2rem}
+}
+@media (prefers-reduced-motion:reduce){.wait::after{animation:none}}
+@media print{.replay{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="mark" href="#" aria-label="ifhf, top of page">ifhf</a>
+    <nav aria-label="Project"><a href="https://github.com/Disc0wd/ifhf">Source</a><a href="https://github.com/Disc0wd/ifhf/blob/main/README.md">Docs</a><a href="https://github.com/Disc0wd/ifhf/blob/main/bench/RESULTS.md">Benchmarks</a></nav>
+  </div>
+
+  <main>
+  <div class="hero">
+    <h1>Flatpak search, without the wait.</h1>
+    <p class="lede"><b>ifhf</b> installs, removes and searches Flatpak apps by their ordinary name. It searches a local index, so a lookup takes 13 ms where Flatpak's own takes 2.69 s.</p>
+
+    <div class="race" id="race">
+      <div class="pane fl-pane">
+        <header><span class="cmd">flatpak search firefox</span><span class="clock" id="clk-fl" aria-hidden="true">2.69 s</span></header>
+        <pre class="out" id="out-fl">Firefox            Web Browser            <span class="id">org.mozilla.firefox</span>   160.0  stable  fedora,flathub
+Firefox            Web Browser            <span class="id">org.mozilla.Firefox</span>   124.0  stable  fedora
+Add Water          Keep Firefox in fashion  <span class="id">dev.qwery.AddWater</span>
+Glate              Offline translator…      <span class="id">com.ktechpit.glate</span>
+<span class="m">…</span></pre>
+      </div>
+      <div class="pane ih-pane">
+        <header><span class="cmd">ifhf search firefox</span><span class="clock" id="clk-ih" aria-hidden="true">13 ms</span></header>
+        <pre class="out" id="out-ih">Firefox
+  <span class="id">org.mozilla.firefox</span>
+  Fast, Private &amp; Safe Web Browser
+  Remote: flathub
+
+Firefox
+  <span class="id">org.mozilla.Firefox</span>
+  Web Browser
+  Remote: fedora
+
+<span class="m">…</span></pre>
+      </div>
+    </div>
+    <p class="race-note"><span>Timings are hyperfine means on a 2020 laptop. The left clock runs in real time.</span><button class="replay" id="replay" type="button">Run it again</button></p>
+
+    <div class="get">
+      <pre><span># needs Rust and flatpak</span>
+git clone https://github.com/Disc0wd/ifhf.git &amp;&amp; cd ifhf
+cargo build --release
+install -Dm755 target/release/ifhf ~/.local/bin/ifhf</pre>
+      <p class="fine">Flatpak still downloads, verifies and installs everything. ifhf adds no daemon and no server.</p>
+    </div>
+  </div>
+
+  <section aria-labelledby="h-name">
+    <div class="split">
+      <div class="prose">
+        <h2 id="h-name">Say the name. It asks when it isn't sure.</h2>
+        <p>Type <code>ifhf install spotify</code> and it finds <code>com.spotify.Client</code> for you, shows the app, remote and scope, and asks once before touching anything.</p>
+        <p><strong>It never guesses.</strong> When two apps are equally good matches, as with Firefox in two remotes, you choose. In a script it stops with a distinct exit code and lists the candidates.</p>
+        <p><strong><code>--yes</code> is not blind.</strong> It refuses fuzzy-only matches, so <code>install terminal</code> will not quietly pick whichever app has “terminal” somewhere in its name.</p>
+        <p><strong>Removing keeps your data.</strong> <code>--delete-data</code> shows a warning, defaults to No, and cannot be switched off in the config.</p>
+      </div>
+      <pre class="shell" aria-label="Example: installing an ambiguous name from a script"><span class="p">$</span> ifhf install firefox --yes
+ifhf: Multiple applications match 'firefox':
+
+1. Firefox
+   <span class="id">org.mozilla.Firefox</span>
+   Remote: fedora (system)
+
+2. Firefox
+   <span class="id">org.mozilla.firefox</span>
+   Remote: flathub (system)
+
+Specify an application ID, or narrow it
+with --remote / --user / --system.
+<span class="p">$ echo $?</span>
+<span class="bad">4</span></pre>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-bench">
+    <h2 id="h-bench">Measured, including where it loses.</h2>
+    <p class="prose" style="max-width:40rem;margin:0 0 1.2rem">Every number below is a <code>hyperfine</code> mean against the real Flatpak 1.18.4 on the same machine. The scale is logarithmic, so 13 ms and 2.7 s can both be read.</p>
+    <div class="chart-head"><span class="key"><i class="fl"></i>flatpak</span><span class="key"><i class="ih"></i>ifhf</span><span>shorter is faster</span></div>
+    <div class="axis" aria-hidden="true"><div></div><div class="inner"><span style="left:0">1 ms</span><span style="left:25%">10 ms</span><span style="left:50%">100 ms</span><span style="left:75%">1 s</span><span style="left:100%">10 s</span></div><div></div></div>
+    <ol class="rows">
+<li class="row win">
+<div class="task">Search “firefox”</div>
+<div class="track" role="img" aria-label="Search “firefox”: flatpak 2.69 s, ifhf 13 ms, ifhf is 202× faster"><div class="inner">
+<div class="line"><i class="bar fl" style="width:85.8%"></i><span class="val" style="left:85.8%">2.69 s</span></div>
+<div class="line"><i class="bar ih" style="width:28.1%"></i><span class="val" style="left:28.1%">13 ms</span></div>
+</div></div>
+<div class="verdict">202× faster</div>
+</li>
+<li class="row win">
+<div class="task">Search “browser”</div>
+<div class="track" role="img" aria-label="Search “browser”: flatpak 2.63 s, ifhf 12 ms, ifhf is 211× faster"><div class="inner">
+<div class="line"><i class="bar fl" style="width:85.5%"></i><span class="val" style="left:85.5%">2.63 s</span></div>
+<div class="line"><i class="bar ih" style="width:27.4%"></i><span class="val" style="left:27.4%">12 ms</span></div>
+</div></div>
+<div class="verdict">211× faster</div>
+</li>
+<li class="row win">
+<div class="task">Details of an app, by ID</div>
+<div class="track" role="img" aria-label="Details of an app, by ID: flatpak 1.56 s, ifhf 58 ms, ifhf is 27× faster"><div class="inner">
+<div class="line"><i class="bar fl" style="width:79.8%"></i><span class="val" style="left:79.8%">1.56 s</span></div>
+<div class="line"><i class="bar ih" style="width:44.1%"></i><span class="val" style="left:44.1%">58 ms</span></div>
+</div></div>
+<div class="verdict">27× faster</div>
+</li>
+<li class="row win">
+<div class="task">Start the program</div>
+<div class="track" role="img" aria-label="Start the program: flatpak 32 ms, ifhf 2.0 ms, ifhf is 17× faster"><div class="inner">
+<div class="line"><i class="bar fl" style="width:37.8%"></i><span class="val" style="left:37.8%">32 ms</span></div>
+<div class="line"><i class="bar ih" style="width:7.3%"></i><span class="val" style="left:7.3%">2.0 ms</span></div>
+</div></div>
+<div class="verdict">17× faster</div>
+</li>
+<li class="row even">
+<div class="task">Check for updates</div>
+<div class="track" role="img" aria-label="Check for updates: flatpak 2.24 s, ifhf 2.36 s, ifhf is about equal"><div class="inner">
+<div class="line"><i class="bar fl" style="width:83.7%"></i><span class="val" style="left:83.7%">2.24 s</span></div>
+<div class="line"><i class="bar ih" style="width:84.3%"></i><span class="val" style="left:84.3%">2.36 s</span></div>
+</div></div>
+<div class="verdict">about equal</div>
+</li>
+<li class="row win">
+<div class="task">Install one app</div>
+<div class="track" role="img" aria-label="Install one app: flatpak 1.72 s, ifhf 1.30 s, ifhf is 1.3× faster"><div class="inner">
+<div class="line"><i class="bar fl" style="width:80.9%"></i><span class="val" style="left:80.9%">1.72 s</span></div>
+<div class="line"><i class="bar ih" style="width:77.8%"></i><span class="val" style="left:77.8%">1.30 s</span></div>
+</div></div>
+<div class="verdict">1.3× faster</div>
+</li>
+<li class="row lose">
+<div class="task">List installed apps</div>
+<div class="track" role="img" aria-label="List installed apps: flatpak 33 ms, ifhf 49 ms, ifhf is 1.5× slower"><div class="inner">
+<div class="line"><i class="bar fl" style="width:38.1%"></i><span class="val" style="left:38.1%">33 ms</span></div>
+<div class="line"><i class="bar ih" style="width:42.2%"></i><span class="val" style="left:42.2%">49 ms</span></div>
+</div></div>
+<div class="verdict">1.5× slower</div>
+</li>
+<li class="row lose">
+<div class="task">List remotes</div>
+<div class="track" role="img" aria-label="List remotes: flatpak 29 ms, ifhf 36 ms, ifhf is 1.3× slower"><div class="inner">
+<div class="line"><i class="bar fl" style="width:36.6%"></i><span class="val" style="left:36.6%">29 ms</span></div>
+<div class="line"><i class="bar ih" style="width:39.1%"></i><span class="val" style="left:39.1%">36 ms</span></div>
+</div></div>
+<div class="verdict">1.3× slower</div>
+</li>
+<li class="row lose">
+<div class="task">Remove one app</div>
+<div class="track" role="img" aria-label="Remove one app: flatpak 225 ms, ifhf 309 ms, ifhf is 1.4× slower"><div class="inner">
+<div class="line"><i class="bar fl" style="width:58.8%"></i><span class="val" style="left:58.8%">225 ms</span></div>
+<div class="line"><i class="bar ih" style="width:62.3%"></i><span class="val" style="left:62.3%">309 ms</span></div>
+</div></div>
+<div class="verdict">1.4× slower</div>
+</li>
+<li class="row lose">
+<div class="task">Info on an installed app</div>
+<div class="track" role="img" aria-label="Info on an installed app: flatpak 24 ms, ifhf 67 ms, ifhf is 2.8× slower"><div class="inner">
+<div class="line"><i class="bar fl" style="width:34.4%"></i><span class="val" style="left:34.4%">24 ms</span></div>
+<div class="line"><i class="bar ih" style="width:45.7%"></i><span class="val" style="left:45.7%">67 ms</span></div>
+</div></div>
+<div class="verdict">2.8× slower</div>
+</li>
+    </ol>
+    <div class="why">
+      <p><b>Why search is so much faster.</b>Flatpak re-reads about 50 MB of AppStream XML on every search. ifhf parses it once into a small index (the first search after deleting it takes 577 ms), then answers from memory without starting a process. It also uses 19 MiB of memory against Flatpak's 439 MiB.</p>
+      <p><b>Why a few things are slower.</b>Removing, listing and checking one installed app all wrap a Flatpak call and add their own lookups, such as which apps are installed and whether a name is ambiguous. That costs tens of milliseconds, and is what lets ifhf report partial failures exactly. Install and update time is Flatpak's own.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-syntax">
+    <h2 id="h-syntax">Two ways to type it, one behaviour.</h2>
+    <div class="prose"><p>Use words, or pacman's flags. Both parse into the same command, so they cannot drift apart.</p></div>
+    <div class="syn">
+      <div class="h">Words</div><div class="h">Pacman-style</div><div class="h">What it does</div>
+      <code>ifhf install spotify discord</code><code>ifhf -S spotify discord</code><span class="d">Install, with one confirmation</span>
+      <code>ifhf remove spotify</code><code>ifhf -R spotify</code><span class="d">Remove, keeping app data</span>
+      <code>ifhf search browser</code><code>ifhf -Ss browser</code><span class="d">Search every enabled remote</span>
+      <code>ifhf info firefox</code><code>ifhf -Si firefox</code><span class="d">Details and install status</span>
+      <code>ifhf list</code><code>ifhf -Q</code><span class="d">Installed apps</span>
+      <code>ifhf updates</code><code>ifhf -Qu</code><span class="d">Available updates</span>
+      <code>ifhf update</code><code>ifhf -Syu</code><span class="d">Apply updates</span>
+      <code>ifhf sync</code><code>ifhf -Sy</code><span class="d">Refresh metadata and the index</span>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-rules">
+    <h2 id="h-rules">What it refuses to do.</h2>
+    <ul class="rules">
+      <li><b>Bypass Flatpak.</b><span>Signatures, permissions and deployment stay Flatpak's job. ifhf never touches OSTree.</span></li>
+      <li><b>Run your input through a shell.</b><span>Every ID and remote name is validated, and arguments reach Flatpak as separate argv entries.</span></li>
+      <li><b>Wait on a closed terminal.</b><span>Without a terminal on stdin, confirmation needs <code>--yes</code> and the exit code says so.</span></li>
+      <li><b>Hide a failed refresh.</b><span>Unreadable metadata is an error, never an empty catalogue. A failed index rebuild keeps the last good one.</span></li>
+      <li><b>Claim atomic installs.</b><span>When several apps are requested and some fail, it asks Flatpak what is installed and reports exactly which succeeded.</span></li>
+      <li><b>Ship untested.</b><span>Unit, integration and end-to-end tests, including the real binary against a stub Flatpak and a real install and removal in an isolated directory.</span></li>
+    </ul>
+  </section>
+  </main>
+
+  <footer>
+    <span>ifhf is part of the IFHX family. Written in Rust.</span>
+    <nav aria-label="Links"><a href="https://github.com/Disc0wd/ifhf">Source</a><a href="https://github.com/Disc0wd/ifhf/blob/main/README.md">README</a><a href="https://github.com/Disc0wd/ifhf/blob/main/docs/DECISIONS.md">Design decisions</a><a href="https://github.com/Disc0wd/ifhf/blob/main/bench/RESULTS.md">Full benchmarks</a></nav>
+  </footer>
 </div>
 
-<h2>Install</h2>
-<pre><code>git clone https://github.com/Disc0wd/ifhf.git
-cd ifhf
-cargo build --release
-install -Dm755 target/release/ifhf ~/.local/bin/ifhf</code></pre>
-<p class="note">Needs Rust and a working <code>flatpak</code>. Read-only commands never change your installation.</p>
-
-<footer>IFHF is part of the IFHX family. Written in Rust. <a href="https://github.com/Disc0wd/ifhf">Source</a> · <a href="https://github.com/Disc0wd/ifhf/blob/main/docs/DECISIONS.md">Design decisions</a></footer>
-</main></body></html>
+<script>
+(function(){
+  var FL_MS=2693, IH_LABEL="13 ms", FL_END="2.69 s";
+  var q=function(i){return document.getElementById(i)};
+  var clkFl=q("clk-fl"), clkIh=q("clk-ih"), outFl=q("out-fl"), outIh=q("out-ih");
+  var reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var timer=0, run=0;
+  function final(){clkFl.textContent=FL_END;clkIh.textContent=IH_LABEL;outFl.hidden=false;outIh.hidden=false;outFl.innerHTML=outFl.dataset.html;}
+  function start(){
+    var id=++run, t0=performance.now();
+    cancelAnimationFrame(timer);
+    outFl.dataset.html=outFl.dataset.html||outFl.innerHTML;
+    outFl.innerHTML='<span class="wait">searching</span>';
+    // ifhf is done before the first frame is painted; show exactly that.
+    clkFl.textContent="0.00 s"; clkIh.textContent=IH_LABEL; outIh.hidden=false;
+    (function tick(now){
+      if(id!==run)return;
+      var e=Math.min(now-t0,FL_MS);
+      clkFl.textContent=(e/1000).toFixed(2)+" s";
+      if(e<FL_MS){timer=requestAnimationFrame(tick);} else {outFl.innerHTML=outFl.dataset.html;}
+    })(t0);
+  }
+  outFl.dataset.html=outFl.innerHTML;
+  q("replay").addEventListener("click",function(){ if(reduce){final();} else {start();} });
+  if(!reduce){ start(); }
+})();
+</script>
+</body>
+</html>
