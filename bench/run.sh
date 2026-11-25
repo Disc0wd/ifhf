@@ -22,7 +22,7 @@ APP_ID=io.github.hrkfdn.ncspot            # small app that runs on an already-in
 bench() { # name, runs, [hyperfine args...] -- commands...
   local name="$1" runs="$2"; shift 2
   echo "=== $name"
-  hyperfine --runs "$runs" --style basic --export-json "$OUT/$name.json" \
+  hyperfine --runs "$runs" --style basic --output pipe --export-json "$OUT/$name.json" \
             --export-markdown "$OUT/$name.md" "$@" >/dev/null
   cat "$OUT/$name.md"
 }

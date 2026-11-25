@@ -45,7 +45,7 @@ lines += [
     f"{sh('cd /tmp && XDG_CACHE_HOME=$(mktemp -d) ' + ifhf + ' search . --limit 0 2>/dev/null | grep -c Remote:')}",
     "",
     "Method: `hyperfine`, mean ± σ over the stated runs; `-N` (no shell) for fast commands. "
-    "Output is discarded by hyperfine for both tools. Each pair performs the same work "
+    "Both tools write to a pipe that hyperfine drains (`--output pipe`), so neither gets a free `/dev/null`. Each pair performs the same work "
     "(e.g. `ifhf search --limit 0` prints every match like `flatpak search` does). "
     "Warm = OS page cache warm and ifhf index present. ifhf's index lives in an isolated cache "
     "directory so these runs do not disturb your real one.", "",

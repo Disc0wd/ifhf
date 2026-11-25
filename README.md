@@ -158,13 +158,13 @@ Headline results (i5-10310U laptop, noisy; full tables and method in
 
 | Task | `flatpak` | `ifhf` |
 |:---|---:|---:|
-| Search `firefox` | 2.69 s | 13 ms |
-| Details by exact ID | 1.56 s | 58 ms |
-| Startup | 32 ms | 2 ms |
+| Search `firefox` | 2.35 s | 11 ms |
+| Details by exact ID | 1.48 s | 50 ms |
+| Startup | 26 ms | 1.5 ms |
 | Peak memory (search) | 439 MiB | 19 MiB |
-| List installed / remotes / updates / install | baseline | about equal |
-| Remove / installed-app `info` | baseline | 40–85 ms **slower** (extra lookups) |
-| First search after index deleted | n/a | 0.58 s |
+| List installed / updates / install / remove | baseline | about equal (remove +15 ms) |
+| Remotes / info on an installed app | baseline | +7 ms / +24 ms **slower** |
+| First search after index deleted | n/a | 0.53 s |
 
 The wins come from searching a local index instead of Flatpak's search; where IFHF only wraps a
 Flatpak operation it adds a little overhead. See [`docs/DECISIONS.md`](docs/DECISIONS.md) for design

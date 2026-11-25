@@ -7,7 +7,7 @@ use ifhf::core::models::Scope;
 fn parses_installed_applications_and_runtimes() {
     let stub = Stub::new();
     let b = FlatpakCli::new(stub.path());
-    let l = b.installed().unwrap();
+    let l = b.installed(true).unwrap();
     assert_eq!(l.len(), 3);
     assert_eq!(l[0].id, "com.spotify.Client");
     assert_eq!(l[0].name, "Spotify");
@@ -36,11 +36,16 @@ fn tolerates_malformed_lines_and_empty_output() {
         "installed.tsv",
         "garbage\n\nonly\ttwo\nok.app.Id/x86_64/stable\t\tflathub\tsystem\tsystem\n",
     );
-    let l = FlatpakCli::new(stub.path()).installed().unwrap();
+    let l = FlatpakCli::new(stub.path()).installed(true).unwrap();
     assert_eq!(l.len(), 1);
     assert_eq!(l[0].name, "");
     stub.set("installed.tsv", "");
-    assert!(FlatpakCli::new(stub.path()).installed().unwrap().is_empty());
+    assert!(
+        FlatpakCli::new(stub.path())
+            .installed(true)
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[test]
@@ -66,13 +71,15 @@ fn updates_query_each_installation_once() {
     assert_eq!(u[0].id, "com.spotify.Client");
     assert_eq!(u[0].installation, "system");
     assert!(!u[0].is_runtime && u[1].is_runtime);
+    let mut log = stub.log();
+    log.sort(); // the two installations are queried concurrently, so their order is arbitrary
     assert_eq!(
-        stub.log(),
+        log,
         vec![
-            "remote-ls --updates --user --columns=ref,name,origin",
-            "remote-ls --updates --system --columns=ref,name,origin"
+            "remote-ls --updates --system --columns=ref,name,origin",
+            "remote-ls --updates --user --columns=ref,name,origin"
         ],
-        "no extra `flatpak remotes` launch"
+        "one query per installation and no extra `flatpak remotes` launch"
     );
 }
 
@@ -144,7 +151,7 @@ fn invalid_input_never_reaches_flatpak() {
 fn missing_flatpak_is_a_clear_error_everywhere() {
     let b = FlatpakCli::new("/definitely/not/flatpak");
     for e in [
-        b.installed().err().unwrap(),
+        b.installed(true).err().unwrap(),
         b.remotes().err().unwrap(),
         b.updates().err().unwrap(),
         b.install(Scope::User, "flathub", &["org.a.B".into()])
@@ -169,8 +176,8 @@ fn discovers_appstream_files_for_enabled_remotes_only() {
         fn remotes(&self) -> ifhf::error::Result<Vec<ifhf::core::models::Remote>> {
             self.0.remotes()
         }
-        fn installed(&self) -> ifhf::error::Result<Vec<ifhf::core::models::Installed>> {
-            self.0.installed()
+        fn installed(&self, r: bool) -> ifhf::error::Result<Vec<ifhf::core::models::Installed>> {
+            self.0.installed(r)
         }
         fn install(&self, a: Scope, b: &str, c: &[String]) -> ifhf::error::Result<()> {
             self.0.install(a, b, c)
@@ -195,5 +202,51 @@ fn discovers_appstream_files_for_enabled_remotes_only() {
     assert!(
         src.iter()
             .all(|s| s.scope == Scope::System && s.path.ends_with("appstream.xml"))
+    );
+}
+
+#[test]
+fn updates_are_ordered_user_then_system_even_if_the_user_query_finishes_last() {
+    let stub = Stub::new();
+    stub.set("slow_user", "");
+    stub.set(
+        "updates_user.tsv",
+        "app/org.u.User/x86_64/stable\tUser app\tflathub\n",
+    );
+    stub.set(
+        "updates_system.tsv",
+        "app/org.s.System/x86_64/stable\tSystem app\tflathub\n",
+    );
+    let u = FlatpakCli::new(stub.path()).updates().unwrap();
+    let ids: Vec<_> = u
+        .iter()
+        .map(|x| (x.id.as_str(), x.installation.as_str()))
+        .collect();
+    assert_eq!(
+        ids,
+        vec![("org.u.User", "user"), ("org.s.System", "system")]
+    );
+}
+
+#[test]
+fn an_update_check_failure_in_either_installation_is_reported() {
+    let stub = Stub::new();
+    stub.set("fail_ls", "");
+    let e = FlatpakCli::new(stub.path()).updates().unwrap_err();
+    assert!(e.to_string().contains("network down"), "{e}");
+}
+
+#[test]
+fn runtimes_are_only_requested_when_asked_for() {
+    let stub = Stub::new();
+    let b = FlatpakCli::new(stub.path());
+    b.installed(false).unwrap();
+    b.installed(true).unwrap();
+    assert_eq!(
+        stub.log(),
+        vec![
+            "list --app --columns=ref,name,origin,installation,options",
+            "list --columns=ref,name,origin,installation,options"
+        ]
     );
 }

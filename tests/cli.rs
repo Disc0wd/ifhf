@@ -368,7 +368,8 @@ fn remove_unknown_app_and_runtimes_are_not_candidates() {
         .add_installed("com.spotify.Client", "Spotify", "flathub", "system");
     f.backend
         .installed
-        .borrow_mut()
+        .lock()
+        .unwrap()
         .push(ifhf::core::models::Installed {
             id: "org.freedesktop.Platform".into(),
             name: "Freedesktop Platform".into(),
@@ -415,7 +416,8 @@ fn list_hides_runtimes_and_filters() {
         .add_installed("org.mozilla.firefox", "Firefox", "flathub", "user");
     f.backend
         .installed
-        .borrow_mut()
+        .lock()
+        .unwrap()
         .push(ifhf::core::models::Installed {
             id: "org.freedesktop.Platform".into(),
             name: "Platform".into(),

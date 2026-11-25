@@ -187,11 +187,13 @@ impl Backend for FlatpakCli {
             .collect())
     }
 
-    fn installed(&self) -> Result<Vec<Installed>> {
-        let out = self.capture(&s(&[
-            "list",
-            "--columns=ref,name,origin,installation,options",
-        ]))?;
+    fn installed(&self, include_runtimes: bool) -> Result<Vec<Installed>> {
+        let mut args = s(&["list"]);
+        if !include_runtimes {
+            args.push("--app".into());
+        }
+        args.push("--columns=ref,name,origin,installation,options".into());
+        let out = self.capture(&args)?;
         Ok(out
             .lines()
             .filter_map(|l| {
@@ -223,36 +225,18 @@ impl Backend for FlatpakCli {
     }
 
     fn updates(&self) -> Result<Vec<Update>> {
-        let mut all = Vec::new();
-        // Flatpak answers an installation without remotes with an empty list, so no pre-check.
-        for scope in [Scope::User, Scope::System] {
-            let out = self.capture(&[
-                "remote-ls".into(),
-                "--updates".into(),
-                scope.flag().into(),
-                "--columns=ref,name,origin".into(),
-            ])?;
-            for l in out.lines() {
-                let f: Vec<&str> = l.split('\t').collect();
-                if f.len() < 3 {
-                    continue;
-                }
-                let mut r = f[0].split('/');
-                let (Some(kind), Some(id), Some(_arch), Some(branch)) =
-                    (r.next(), r.next(), r.next(), r.next())
-                else {
-                    continue;
-                };
-                all.push(Update {
-                    id: id.into(),
-                    name: f[1].trim().into(),
-                    branch: branch.into(),
-                    origin: f[2].trim().into(),
-                    installation: scope.as_str().into(),
-                    is_runtime: kind == "runtime",
-                });
-            }
-        }
+        // The two installations are independent network queries: ask both at once so the (usually
+        // empty) user check costs no wall-clock time next to the system one.
+        let (user, system) = std::thread::scope(|s| {
+            let user = s.spawn(|| self.updates_for(Scope::User));
+            let system = self.updates_for(Scope::System);
+            let user = user
+                .join()
+                .unwrap_or_else(|_| Err(Error::Backend("update check panicked".into())));
+            (user, system)
+        });
+        let mut all = user?;
+        all.extend(system?);
         Ok(all)
     }
 
@@ -262,6 +246,40 @@ impl Backend for FlatpakCli {
 
     fn sync(&self) -> Result<()> {
         self.run(&s(&["update", "--appstream"]))
+    }
+}
+
+impl FlatpakCli {
+    fn updates_for(&self, scope: Scope) -> Result<Vec<Update>> {
+        // Flatpak answers an installation without remotes with an empty list, so no pre-check.
+        let out = self.capture(&[
+            "remote-ls".into(),
+            "--updates".into(),
+            scope.flag().into(),
+            "--columns=ref,name,origin".into(),
+        ])?;
+        let mut all = Vec::new();
+        for l in out.lines() {
+            let f: Vec<&str> = l.split('\t').collect();
+            if f.len() < 3 {
+                continue;
+            }
+            let mut r = f[0].split('/');
+            let (Some(kind), Some(id), Some(_arch), Some(branch)) =
+                (r.next(), r.next(), r.next(), r.next())
+            else {
+                continue;
+            };
+            all.push(Update {
+                id: id.into(),
+                name: f[1].trim().into(),
+                branch: branch.into(),
+                origin: f[2].trim().into(),
+                installation: scope.as_str().into(),
+                is_runtime: kind == "runtime",
+            });
+        }
+        Ok(all)
     }
 }
 

@@ -37,17 +37,38 @@ versioning) are implemented. Interactive TUI mode (spec 3.3, explicitly not requ
 
 ## Measured performance trade-offs
 
-From `bench/RESULTS.md` (i5-10310U, `powersave` governor, noisy: σ of 5–15 ms on fast commands):
+From `bench/RESULTS.md` (i5-10310U, `powersave` governor; noisy, σ of 1–7 ms on fast commands). Both
+tools write to a pipe that hyperfine drains, so neither gets a free `/dev/null`.
 
-- **Large wins (no Flatpak process involved):** search ~200× faster, details-by-ID ~25×, startup ~15×,
+- **Large wins (no Flatpak process involved):** search ~210× faster, details-by-ID ~30×, startup ~17×,
   memory ~23× lower (19 MiB vs 439 MiB for a search).
-- **Parity within noise:** `list`, `remotes`, `updates`, `install` (the work is Flatpak's own).
-- **Slower by design:** `remove` (~+60–85 ms), `info` on an installed app (~+40 ms), `updates` (~+0.1 s)
-  and `list` (+0–15 ms). Reasons: `remove` and `install` ask Flatpak what is installed first (to resolve
-  names, report "already installed" and report partial failures exactly); `info` also loads the
-  index; `updates` queries the user and system installations separately. These are the price of
-  name resolution and safer reporting. They could be cut by reading installed state directly from
-  Flatpak's on-disk layout, which was rejected as relying on undocumented internals.
-- **Cached search vs the 20 ms target:** 12–35 ms depending on the query and CPU state; the target is
-  met for some queries, not reliably on this machine. Index parsing and the resolver scan run on
-  several threads for large catalogues (identical results to sequential, covered by tests).
+- **Parity within noise:** `list`, `updates`, `install`, `remove` (remove is +15 ms).
+- **Still slower:** `remotes` (+7 ms: process spawn and output parsing around the same Flatpak
+  call) and `info` on an installed app (+24 ms: it loads the index and asks Flatpak what is
+  installed, which `flatpak info` does not need to do).
+
+### What was done about it
+
+An earlier run had `list` +10 ms, `remove` +84 ms, `updates` +120 ms and installed `info` +43 ms. Causes and fixes:
+
+| Cause | Fix |
+|:---|:---|
+| `list` asked Flatpak for runtimes and filtered them out (+10 ms inside Flatpak) | `installed(include_runtimes)`: apps only unless `--all` |
+| `updates` queried the user and system installations one after the other | Both queried concurrently; result order stays user, then system |
+| `install`/`info` loaded the index, then asked Flatpak what is installed | Both run at once (`std::thread::scope`) |
+| `update <app>` waited for the network check, then for the installed lookup | The lookup rides along with the check |
+| Benchmark gave `flatpak` a `/dev/null` output but made ifhf read a pipe | `--output pipe` for both |
+
+### Not done, on purpose
+
+Reading installed apps straight from Flatpak's on-disk layout (`<installation>/app/<id>/…`) would
+remove the remaining `flatpak list` launch and make `info`/`remove`/`list` a few milliseconds
+faster. It depends on Flatpak's internal directory format, which is not a documented API, so it
+was left out; the remaining gap is 7–25 ms. If it is ever added it must fall back to the CLI and be
+differential-tested against `flatpak list`.
+
+### Cached search vs the 20 ms target
+
+10–26 ms depending on the query and CPU state, so the target is met for most queries, not all. Index
+parsing and the resolver scan run on several threads for large catalogues (results identical to
+sequential, covered by tests).

@@ -49,6 +49,20 @@ fn load_catalog(env: &mut Env) -> Result<Catalog> {
     Ok(cat)
 }
 
+/// Load the catalogue while Flatpak lists the installed apps. Both are mostly waiting (on a file
+/// read and on a subprocess), so overlapping them hides the shorter one.
+fn catalog_and_installed(env: &mut Env) -> (Result<Catalog>, Result<Vec<Installed>>) {
+    let backend = env.backend;
+    std::thread::scope(|s| {
+        let lookup = s.spawn(move || backend.installed(false));
+        let cat = load_catalog(env);
+        let have = lookup
+            .join()
+            .unwrap_or_else(|_| Err(Error::Backend("installed-apps lookup panicked".into())));
+        (cat, have)
+    })
+}
+
 fn search_opts(
     env: &Env,
     remote: Option<String>,
@@ -213,7 +227,8 @@ fn report(env: &mut Env, verb: &str, action: &str, rep: &OpReport) -> Result<()>
 
 fn install(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
     let st = style(env, opts);
-    let cat = load_catalog(env)?;
+    let (cat, have) = catalog_and_installed(env);
+    let cat = cat?;
     let remote = effective_remote(env, opts);
     let want = opts.scope.unwrap_or(env.config.general.default_scope);
     let explicit = opts.scope.is_some();
@@ -251,7 +266,7 @@ fn install(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
     }
 
     // Flatpak would skip these anyway; say so instead of reporting a fresh install.
-    let have = env.backend.installed()?;
+    let have = have?;
     let (already, chosen): (Vec<App>, Vec<App>) = chosen.into_iter().partition(|a| {
         have.iter()
             .any(|i| i.id == a.id && !i.is_runtime && i.installation == a.scope.as_str())
@@ -297,7 +312,7 @@ fn remove(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
     let st = style(env, opts);
     let installed: Vec<Installed> = env
         .backend
-        .installed()?
+        .installed(opts.all)?
         .into_iter()
         .filter(|i| opts.all || !i.is_runtime)
         .collect();
@@ -390,8 +405,9 @@ fn search(env: &mut Env, opts: &Opts, query: &str) -> Result<()> {
 
 fn info(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
     let st = style(env, opts);
-    let cat = load_catalog(env)?;
-    let installed = env.backend.installed()?;
+    let (cat, installed) = catalog_and_installed(env);
+    let cat = cat?;
+    let installed = installed?;
     let remote = effective_remote(env, opts);
     let so = search_opts(env, remote.clone(), opts.scope);
     let installed_pool: Vec<App> = installed.iter().map(Installed::to_app).collect();
@@ -442,7 +458,7 @@ fn list(env: &mut Env, opts: &Opts) -> Result<()> {
     let st = style(env, opts);
     let filter = opts.filter.as_deref().map(str::to_lowercase);
     let mut rows: Vec<&Installed> = Vec::new();
-    let all = env.backend.installed()?;
+    let all = env.backend.installed(opts.all)?;
     for i in &all {
         if (!opts.all && i.is_runtime) || opts.scope.is_some_and(|s| i.scope() != s) {
             continue;
@@ -557,13 +573,24 @@ fn updates(env: &mut Env) -> Result<()> {
 
 fn update(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
     let st = style(env, opts);
-    let ups = env.backend.updates()?;
+    // The update check is a network round trip; the installed-apps lookup rides along with it.
+    let backend = env.backend;
+    let want_installed = !queries.is_empty();
+    let (ups, installed_now) = std::thread::scope(|s| {
+        let lookup = want_installed.then(|| s.spawn(move || backend.installed(false)));
+        let ups = backend.updates();
+        let installed_now = lookup.map(|h| {
+            h.join()
+                .unwrap_or_else(|_| Err(Error::Backend("installed-apps lookup panicked".into())))
+        });
+        (ups, installed_now)
+    });
+    let ups = ups?;
     let mut selected: Vec<&Update> = ups.iter().collect();
     let mut up_to_date: Vec<String> = Vec::new();
     if !queries.is_empty() {
-        let installed: Vec<Installed> = env
-            .backend
-            .installed()?
+        let installed: Vec<Installed> = installed_now
+            .expect("requested whenever queries are present")?
             .into_iter()
             .filter(|i| !i.is_runtime)
             .collect();

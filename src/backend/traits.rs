@@ -12,11 +12,12 @@ pub struct Source {
 }
 
 /// Everything IFHF needs from Flatpak. Nothing outside `backend` runs Flatpak commands.
-pub trait Backend {
+pub trait Backend: Sync {
     /// Flatpak installation directories (user, system) whose metadata we read.
     fn installation_dirs(&self) -> Vec<(Scope, PathBuf)>;
     fn remotes(&self) -> Result<Vec<Remote>>;
-    fn installed(&self) -> Result<Vec<Installed>>;
+    /// Installed refs. Runtimes are only fetched on request: asking Flatpak for them costs ~10 ms.
+    fn installed(&self, include_runtimes: bool) -> Result<Vec<Installed>>;
     /// `refs` are full refs or IDs; all come from one remote in one scope (one transaction).
     fn install(&self, scope: Scope, remote: &str, refs: &[String]) -> Result<()>;
     fn remove(&self, installation: &str, ids: &[String], delete_data: bool) -> Result<()>;

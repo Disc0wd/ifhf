@@ -40,7 +40,7 @@ pub fn install(backend: &dyn Backend, items: &[App]) -> OpReport {
         match backend.install(scope, remote, &refs) {
             Ok(()) => rep.done.extend(apps.iter().map(|a| label(a))),
             Err(e) => {
-                let now = backend.installed().ok();
+                let now = backend.installed(false).ok();
                 for a in apps {
                     let present = now.as_ref().is_some_and(|l| {
                         l.iter()
@@ -76,7 +76,7 @@ pub fn remove(backend: &dyn Backend, items: &[Installed], delete_data: bool) -> 
         match backend.remove(inst, &ids, delete_data) {
             Ok(()) => rep.done.extend(apps.iter().map(|a| name(a))),
             Err(e) => {
-                let now = backend.installed().ok();
+                let now = backend.installed(true).ok();
                 for a in apps {
                     let gone = now
                         .as_ref()
@@ -171,7 +171,7 @@ mod tests {
         };
         b.add_installed("org.a.A", "A", "flathub", "system");
         b.add_installed("org.b.B", "B", "flathub", "system");
-        let items = b.installed().unwrap();
+        let items = b.installed(true).unwrap();
         let rep = remove(&b, &items, false);
         assert_eq!(rep.done, vec!["A"]);
         assert_eq!(rep.failed[0].0, "B");
@@ -182,7 +182,7 @@ mod tests {
     fn delete_data_flag_is_forwarded_only_when_asked() {
         let b = MockBackend::default();
         b.add_installed("org.a.A", "A", "flathub", "user");
-        let items = b.installed().unwrap();
+        let items = b.installed(true).unwrap();
         remove(&b, &items, true);
         assert_eq!(b.calls(), vec!["remove user --delete-data org.a.A"]);
     }

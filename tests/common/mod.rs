@@ -228,7 +228,7 @@ impl Stub {
 case \"$1\" in\n\
  list) cat \"$d/installed.tsv\";;\n\
  remotes) cat \"$d/remotes.tsv\";;\n\
- remote-ls) case \"$*\" in *--user*) cat \"$d/updates_user.tsv\" 2>/dev/null;; *) cat \"$d/updates_system.tsv\" 2>/dev/null;; esac;;\n\
+ remote-ls) if [ -f \"$d/fail_ls\" ]; then echo \"boom: network down\" >&2; exit 1; fi; case \"$*\" in *--user*) [ -f \"$d/slow_user\" ] && sleep 0.3; cat \"$d/updates_user.tsv\" 2>/dev/null;; *) cat \"$d/updates_system.tsv\" 2>/dev/null;; esac;;\n\
  install|uninstall|update) if [ -f \"$d/fail\" ]; then echo \"boom: remote unreachable\" >&2; exit 1; fi;;\n\
 esac\nexit 0\n";
         let p = dir.path().join("flatpak");

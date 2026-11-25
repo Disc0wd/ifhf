@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ifhf: Flatpak search in milliseconds</title>
-<meta name="description" content="A command line for Flatpak that installs, removes and searches apps by name. Search takes 13 ms instead of 2.69 s.">
+<meta name="description" content="A command line for Flatpak that installs, removes and searches apps by name. Search takes 11 ms instead of 2.35 s.">
 <meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b1015" media="(prefers-color-scheme: dark)">
 <link rel="preload" href="fonts/SchibstedGrotesk.woff2" as="font" type="font/woff2" crossorigin>
@@ -146,11 +146,11 @@ footer nav{display:flex;gap:1.4rem;flex-wrap:wrap}
   <main>
   <div class="hero">
     <h1>Flatpak search, without the wait.</h1>
-    <p class="lede"><b>ifhf</b> installs, removes and searches Flatpak apps by their ordinary name. It searches a local index, so a lookup takes 13 ms where Flatpak's own takes 2.69 s.</p>
+    <p class="lede"><b>ifhf</b> installs, removes and searches Flatpak apps by their ordinary name. It searches a local index, so a lookup takes 11 ms where Flatpak's own takes 2.35 s.</p>
 
     <div class="race" id="race">
       <div class="pane fl-pane">
-        <header><span class="cmd">flatpak search firefox</span><span class="clock" id="clk-fl" aria-hidden="true">2.69 s</span></header>
+        <header><span class="cmd">flatpak search firefox</span><span class="clock" id="clk-fl" aria-hidden="true">2.35 s</span></header>
         <pre class="out" id="out-fl">Firefox            Web Browser            <span class="id">org.mozilla.firefox</span>   160.0  stable  fedora,flathub
 Firefox            Web Browser            <span class="id">org.mozilla.Firefox</span>   124.0  stable  fedora
 Add Water          Keep Firefox in fashion  <span class="id">dev.qwery.AddWater</span>
@@ -158,7 +158,7 @@ Glate              Offline translator…      <span class="id">com.ktechpit.glat
 <span class="m">…</span></pre>
       </div>
       <div class="pane ih-pane">
-        <header><span class="cmd">ifhf search firefox</span><span class="clock" id="clk-ih" aria-hidden="true">13 ms</span></header>
+        <header><span class="cmd">ifhf search firefox</span><span class="clock" id="clk-ih" aria-hidden="true">11 ms</span></header>
         <pre class="out" id="out-ih">Firefox
   <span class="id">org.mozilla.firefox</span>
   Fast, Private &amp; Safe Web Browser
@@ -218,88 +218,88 @@ with --remote / --user / --system.
     <ol class="rows">
 <li class="row win">
 <div class="task">Search “firefox”</div>
-<div class="track" role="img" aria-label="Search “firefox”: flatpak 2.69 s, ifhf 13 ms, ifhf is 202× faster"><div class="inner">
-<div class="line"><i class="bar fl" style="width:85.8%"></i><span class="val" style="left:85.8%">2.69 s</span></div>
-<div class="line"><i class="bar ih" style="width:28.1%"></i><span class="val" style="left:28.1%">13 ms</span></div>
+<div class="track" role="img" aria-label="Search “firefox”: flatpak 2.35 s, ifhf 11 ms, ifhf is 212× faster"><div class="inner">
+<div class="line"><i class="bar fl" style="width:84.3%"></i><span class="val" style="left:84.3%">2.35 s</span></div>
+<div class="line"><i class="bar ih" style="width:26.1%"></i><span class="val" style="left:26.1%">11 ms</span></div>
 </div></div>
-<div class="verdict">202× faster</div>
+<div class="verdict">212× faster</div>
 </li>
 <li class="row win">
 <div class="task">Search “browser”</div>
-<div class="track" role="img" aria-label="Search “browser”: flatpak 2.63 s, ifhf 12 ms, ifhf is 211× faster"><div class="inner">
-<div class="line"><i class="bar fl" style="width:85.5%"></i><span class="val" style="left:85.5%">2.63 s</span></div>
-<div class="line"><i class="bar ih" style="width:27.4%"></i><span class="val" style="left:27.4%">12 ms</span></div>
+<div class="track" role="img" aria-label="Search “browser”: flatpak 2.32 s, ifhf 11 ms, ifhf is 214× faster"><div class="inner">
+<div class="line"><i class="bar fl" style="width:84.1%"></i><span class="val" style="left:84.1%">2.32 s</span></div>
+<div class="line"><i class="bar ih" style="width:25.9%"></i><span class="val" style="left:25.9%">11 ms</span></div>
 </div></div>
-<div class="verdict">211× faster</div>
+<div class="verdict">214× faster</div>
 </li>
 <li class="row win">
 <div class="task">Details of an app, by ID</div>
-<div class="track" role="img" aria-label="Details of an app, by ID: flatpak 1.56 s, ifhf 58 ms, ifhf is 27× faster"><div class="inner">
-<div class="line"><i class="bar fl" style="width:79.8%"></i><span class="val" style="left:79.8%">1.56 s</span></div>
-<div class="line"><i class="bar ih" style="width:44.1%"></i><span class="val" style="left:44.1%">58 ms</span></div>
+<div class="track" role="img" aria-label="Details of an app, by ID: flatpak 1.48 s, ifhf 50 ms, ifhf is 30× faster"><div class="inner">
+<div class="line"><i class="bar fl" style="width:79.2%"></i><span class="val" style="left:79.2%">1.48 s</span></div>
+<div class="line"><i class="bar ih" style="width:42.4%"></i><span class="val" style="left:42.4%">50 ms</span></div>
 </div></div>
-<div class="verdict">27× faster</div>
+<div class="verdict">30× faster</div>
 </li>
 <li class="row win">
 <div class="task">Start the program</div>
-<div class="track" role="img" aria-label="Start the program: flatpak 32 ms, ifhf 2.0 ms, ifhf is 17× faster"><div class="inner">
-<div class="line"><i class="bar fl" style="width:37.8%"></i><span class="val" style="left:37.8%">32 ms</span></div>
-<div class="line"><i class="bar ih" style="width:7.3%"></i><span class="val" style="left:7.3%">2.0 ms</span></div>
+<div class="track" role="img" aria-label="Start the program: flatpak 26 ms, ifhf 1.5 ms, ifhf is 18× faster"><div class="inner">
+<div class="line"><i class="bar fl" style="width:35.4%"></i><span class="val" style="left:35.4%">26 ms</span></div>
+<div class="line"><i class="bar ih" style="width:4.3%"></i><span class="val" style="left:4.3%">1.5 ms</span></div>
 </div></div>
-<div class="verdict">17× faster</div>
+<div class="verdict">18× faster</div>
 </li>
 <li class="row even">
 <div class="task">Check for updates</div>
-<div class="track" role="img" aria-label="Check for updates: flatpak 2.24 s, ifhf 2.36 s, ifhf is about equal"><div class="inner">
-<div class="line"><i class="bar fl" style="width:83.7%"></i><span class="val" style="left:83.7%">2.24 s</span></div>
-<div class="line"><i class="bar ih" style="width:84.3%"></i><span class="val" style="left:84.3%">2.36 s</span></div>
+<div class="track" role="img" aria-label="Check for updates: flatpak 1.97 s, ifhf 2.04 s, ifhf is about equal"><div class="inner">
+<div class="line"><i class="bar fl" style="width:82.4%"></i><span class="val" style="left:82.4%">1.97 s</span></div>
+<div class="line"><i class="bar ih" style="width:82.8%"></i><span class="val" style="left:82.8%">2.04 s</span></div>
 </div></div>
 <div class="verdict">about equal</div>
 </li>
-<li class="row win">
+<li class="row even">
 <div class="task">Install one app</div>
-<div class="track" role="img" aria-label="Install one app: flatpak 1.72 s, ifhf 1.30 s, ifhf is 1.3× faster"><div class="inner">
-<div class="line"><i class="bar fl" style="width:80.9%"></i><span class="val" style="left:80.9%">1.72 s</span></div>
-<div class="line"><i class="bar ih" style="width:77.8%"></i><span class="val" style="left:77.8%">1.30 s</span></div>
+<div class="track" role="img" aria-label="Install one app: flatpak 1.34 s, ifhf 1.17 s, ifhf is about equal"><div class="inner">
+<div class="line"><i class="bar fl" style="width:78.2%"></i><span class="val" style="left:78.2%">1.34 s</span></div>
+<div class="line"><i class="bar ih" style="width:76.7%"></i><span class="val" style="left:76.7%">1.17 s</span></div>
 </div></div>
-<div class="verdict">1.3× faster</div>
+<div class="verdict">about equal</div>
 </li>
-<li class="row lose">
+<li class="row even">
 <div class="task">List installed apps</div>
-<div class="track" role="img" aria-label="List installed apps: flatpak 33 ms, ifhf 49 ms, ifhf is 1.5× slower"><div class="inner">
-<div class="line"><i class="bar fl" style="width:38.1%"></i><span class="val" style="left:38.1%">33 ms</span></div>
-<div class="line"><i class="bar ih" style="width:42.2%"></i><span class="val" style="left:42.2%">49 ms</span></div>
+<div class="track" role="img" aria-label="List installed apps: flatpak 31 ms, ifhf 31 ms, ifhf is about equal"><div class="inner">
+<div class="line"><i class="bar fl" style="width:37.5%"></i><span class="val" style="left:37.5%">31 ms</span></div>
+<div class="line"><i class="bar ih" style="width:37.4%"></i><span class="val" style="left:37.4%">31 ms</span></div>
 </div></div>
-<div class="verdict">1.5× slower</div>
+<div class="verdict">about equal</div>
 </li>
 <li class="row lose">
 <div class="task">List remotes</div>
-<div class="track" role="img" aria-label="List remotes: flatpak 29 ms, ifhf 36 ms, ifhf is 1.3× slower"><div class="inner">
-<div class="line"><i class="bar fl" style="width:36.6%"></i><span class="val" style="left:36.6%">29 ms</span></div>
-<div class="line"><i class="bar ih" style="width:39.1%"></i><span class="val" style="left:39.1%">36 ms</span></div>
+<div class="track" role="img" aria-label="List remotes: flatpak 25 ms, ifhf 32 ms, ifhf is 1.3× slower"><div class="inner">
+<div class="line"><i class="bar fl" style="width:35.0%"></i><span class="val" style="left:35.0%">25 ms</span></div>
+<div class="line"><i class="bar ih" style="width:37.7%"></i><span class="val" style="left:37.7%">32 ms</span></div>
 </div></div>
 <div class="verdict">1.3× slower</div>
 </li>
-<li class="row lose">
+<li class="row even">
 <div class="task">Remove one app</div>
-<div class="track" role="img" aria-label="Remove one app: flatpak 225 ms, ifhf 309 ms, ifhf is 1.4× slower"><div class="inner">
-<div class="line"><i class="bar fl" style="width:58.8%"></i><span class="val" style="left:58.8%">225 ms</span></div>
-<div class="line"><i class="bar ih" style="width:62.3%"></i><span class="val" style="left:62.3%">309 ms</span></div>
+<div class="track" role="img" aria-label="Remove one app: flatpak 193 ms, ifhf 208 ms, ifhf is about equal"><div class="inner">
+<div class="line"><i class="bar fl" style="width:57.1%"></i><span class="val" style="left:57.1%">193 ms</span></div>
+<div class="line"><i class="bar ih" style="width:57.9%"></i><span class="val" style="left:57.9%">208 ms</span></div>
 </div></div>
-<div class="verdict">1.4× slower</div>
+<div class="verdict">about equal</div>
 </li>
 <li class="row lose">
 <div class="task">Info on an installed app</div>
-<div class="track" role="img" aria-label="Info on an installed app: flatpak 24 ms, ifhf 67 ms, ifhf is 2.8× slower"><div class="inner">
-<div class="line"><i class="bar fl" style="width:34.4%"></i><span class="val" style="left:34.4%">24 ms</span></div>
-<div class="line"><i class="bar ih" style="width:45.7%"></i><span class="val" style="left:45.7%">67 ms</span></div>
+<div class="track" role="img" aria-label="Info on an installed app: flatpak 31 ms, ifhf 55 ms, ifhf is 1.8× slower"><div class="inner">
+<div class="line"><i class="bar fl" style="width:37.2%"></i><span class="val" style="left:37.2%">31 ms</span></div>
+<div class="line"><i class="bar ih" style="width:43.5%"></i><span class="val" style="left:43.5%">55 ms</span></div>
 </div></div>
-<div class="verdict">2.8× slower</div>
+<div class="verdict">1.8× slower</div>
 </li>
     </ol>
     <div class="why">
-      <p><b>Why search is so much faster.</b>Flatpak re-reads about 50 MB of AppStream XML on every search. ifhf parses it once into a small index (the first search after deleting it takes 577 ms), then answers from memory without starting a process. It also uses 19 MiB of memory against Flatpak's 439 MiB.</p>
-      <p><b>Why a few things are slower.</b>Removing, listing and checking one installed app all wrap a Flatpak call and add their own lookups, such as which apps are installed and whether a name is ambiguous. That costs tens of milliseconds, and is what lets ifhf report partial failures exactly. Install and update time is Flatpak's own.</p>
+      <p><b>Why search is so much faster.</b>Flatpak re-reads about 50 MB of AppStream XML on every search. ifhf parses it once into a small index (the first search after deleting it takes 532 ms), then answers from memory without starting a process. It also uses 19 MiB of memory against Flatpak's 439 MiB.</p>
+      <p><b>Where it still loses.</b>Listing remotes and looking at one installed app wrap a Flatpak call and add their own lookup, such as which apps are installed. That costs 7 to 25 milliseconds, and it is what lets ifhf resolve names and report partial failures exactly. Install, update and remove time is Flatpak's own.</p>
     </div>
   </section>
 
@@ -340,7 +340,7 @@ with --remote / --user / --system.
 
 <script>
 (function(){
-  var FL_MS=2693, IH_LABEL="13 ms", FL_END="2.69 s";
+  var FL_MS=2352, IH_LABEL="11 ms", FL_END="2.35 s";
   var q=function(i){return document.getElementById(i)};
   var clkFl=q("clk-fl"), clkIh=q("clk-ih"), outFl=q("out-fl"), outIh=q("out-ih");
   var reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;

@@ -209,3 +209,33 @@ fn no_color_when_not_a_terminal() {
     let o = r.run(&["search", "spotify"]);
     assert!(!s(&o.stdout).contains('\x1b'));
 }
+
+#[test]
+fn list_only_asks_flatpak_for_runtimes_when_told_to() {
+    let r = Rig::new();
+    r.run(&["list"]);
+    r.run(&["list", "--all"]);
+    let log = r.stub.log();
+    assert!(
+        log.contains(&"list --app --columns=ref,name,origin,installation,options".to_string()),
+        "{log:?}"
+    );
+    assert!(
+        log.contains(&"list --columns=ref,name,origin,installation,options".to_string()),
+        "{log:?}"
+    );
+}
+
+#[test]
+fn install_overlaps_the_installed_lookup_with_the_catalogue_load() {
+    // Behaviour check: still reports "already installed" correctly with the concurrent lookup.
+    let r = Rig::new();
+    let o = r.run(&["install", "spotify", "--yes"]);
+    assert_eq!(o.status.code(), Some(0), "{}", s(&o.stderr));
+    assert!(
+        s(&o.stdout).contains("Already installed: Spotify"),
+        "{}",
+        s(&o.stdout)
+    );
+    assert!(!r.stub.log().iter().any(|l| l.starts_with("install")));
+}
