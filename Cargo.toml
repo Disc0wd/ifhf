@@ -1,0 +1,21 @@
+[package]
+name = "ifhf"
+version = "0.1.0"
+edition = "2024"
+description = "A friendly command-line frontend for Flatpak"
+
+[dependencies]
+flate2 = "1.1.11"
+quick-xml = "0.42.0"
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.2.3"
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
