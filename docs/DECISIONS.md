@@ -27,6 +27,10 @@ versioning) are implemented. Interactive TUI mode (spec 3.3, explicitly not requ
 | 13 | Named extra system installations are not read | `FlatpakCli` reads the user dir and `FLATPAK_SYSTEM_DIR`/`/var/lib/flatpak`. Supporting more needs `flatpak --installations` plus `--installation=NAME` plumbing; not needed for the target machine. |
 | 14 | Staleness note after 7 days | FR-028: users are told when metadata may be out of date (printed to stderr, never alters results). |
 | 15 | Metadata is read from Flatpak's on-disk AppStream files | Spec 6.2 asks for "supported interfaces or documented locations"; there is no CLI that dumps AppStream data efficiently (`flatpak search` is the slow path being replaced). The path layout is stable across Flatpak 1.x; if a file is missing IFHF reports it and points to `ifhf sync` instead of guessing. |
+| 16 | Terminal styling is layered: `color` ⊂ `fancy` (layout, symbols) ⊂ is-a-terminal | Scripts must keep parsing the same bytes. Colour never changes the text (tested by stripping escape codes), and ASCII mode is verified to be pure ASCII. |
+| 17 | Choice lists show only candidates within the ambiguity margin of the best match | Found while reviewing real output: `install firefox` listed 10 entries, 7 of them weak description matches. Those are noise, not choices. |
+| 18 | The index header carries a parser revision (`r<N>`) as well as the version | A parser fix (e.g. de-duplicating the developer name) must invalidate indexes written by the old parser, not only releases. |
+| 19 | A user "no" prints a dim `Cancelled.` and exits 6 | Declining is not a failure; no alarm colours. |
 
 ## Known gaps (not implemented)
 

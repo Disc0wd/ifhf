@@ -907,3 +907,262 @@ fn search_collapses_the_same_remote_in_two_installations() {
         io.out
     );
 }
+
+// ---- terminal presentation ---------------------------------------------------------------
+
+fn strip(s: &str) -> String {
+    let mut out = String::new();
+    let mut it = s.chars();
+    while let Some(c) = it.next() {
+        if c == '\x1b' {
+            for d in it.by_ref() {
+                if d == 'm' {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+fn term(answers: &[&str]) -> TestIo {
+    let mut io = TestIo::answering(answers);
+    io.tty = true;
+    io.err_tty = true;
+    io.color = true;
+    io
+}
+
+#[test]
+fn search_on_a_terminal_is_coloured_and_compact() {
+    let f = Fixture::new();
+    let mut io = term(&[]);
+    assert_eq!(f.run(&mut io, "search spotify"), 0);
+    assert!(io.out.contains("\x1b["), "{:?}", io.out);
+    let plain = strip(&io.out);
+    assert!(
+        plain.starts_with("Spotify  com.spotify.Client\n  Music streaming\n  flathub\n"),
+        "{plain}"
+    );
+    assert!(
+        !plain.contains("Remote:"),
+        "terminal layout drops the label"
+    );
+}
+
+#[test]
+fn piped_output_stays_plain_even_with_colour_configured() {
+    let f = Fixture::new();
+    let mut io = TestIo::non_interactive();
+    io.color = true; // colour allowed, but stdout is not a terminal
+    f.run(&mut io, "search spotify");
+    assert!(
+        !io.out.contains('\x1b') && io.out.contains("Remote: flathub"),
+        "{}",
+        io.out
+    );
+}
+
+#[test]
+fn no_color_keeps_the_layout_but_drops_the_escape_codes() {
+    let f = Fixture::new();
+    let mut io = term(&[]);
+    io.color = false; // what NO_COLOR does
+    f.run(&mut io, "search spotify");
+    assert!(!io.out.contains('\x1b'));
+    assert!(io.out.starts_with("Spotify  com.spotify.Client"));
+    let mut io = term(&[]);
+    f.run(&mut io, "search spotify --no-color");
+    assert!(!io.out.contains('\x1b'));
+}
+
+#[test]
+fn config_can_turn_colour_off() {
+    let mut f = Fixture::new();
+    f.config = Config::parse("[general]\ncolor = false\n", "t").unwrap();
+    let mut io = term(&[]);
+    f.run(&mut io, "search spotify");
+    assert!(!io.out.contains('\x1b'));
+    f.backend
+        .add_installed("com.spotify.Client", "Spotify", "flathub", "system");
+    let mut io = term(&["y"]);
+    assert_eq!(f.run(&mut io, "remove spotify"), 0);
+    assert!(!io.out.contains('\x1b') && !io.asked[0].contains('\x1b'));
+}
+
+#[test]
+fn ascii_locale_gets_ascii_symbols() {
+    let f = Fixture::new();
+    let mut io = term(&["y"]);
+    io.utf8 = false;
+    assert_eq!(f.run(&mut io, "install spotify"), 0, "{}", io.err);
+    let all = strip(&format!("{}{}", io.out, io.asked.join("")));
+    assert!(all.is_ascii(), "{all}");
+    assert!(
+        all.contains("| Spotify") && all.contains("+ Installed Spotify"),
+        "{all}"
+    );
+}
+
+#[test]
+fn install_on_a_terminal_shows_the_bar_prompt_and_checked_result() {
+    let f = Fixture::new();
+    let mut io = term(&["y"]);
+    assert_eq!(f.run(&mut io, "install spotify"), 0, "{}", io.err);
+    let out = strip(&io.out);
+    assert!(
+        out.contains("┃ Spotify") && out.contains("┃ Application com.spotify.Client"),
+        "{out}"
+    );
+    assert!(out.contains("✓ Installed Spotify"), "{out}");
+    assert_eq!(strip(&io.asked[0]), "Install Spotify? [Y/n] ");
+    assert!(
+        io.asked[0].contains("\x1b[1mY\x1b[0m"),
+        "default answer is highlighted"
+    );
+}
+
+#[test]
+fn errors_on_a_terminal_are_marked_and_stay_readable() {
+    let f = Fixture::new();
+    let mut io = term(&[]);
+    assert_eq!(f.run(&mut io, "install zzqqnothing"), 3);
+    let e = strip(&io.err);
+    assert!(
+        e.starts_with("✗ No application matches 'zzqqnothing'."),
+        "{e}"
+    );
+    assert!(e.contains("ifhf search zzqqnothing"));
+    assert!(io.err.contains("\x1b["));
+    // stderr piped (stdout a terminal): errors stay plain
+    let mut io = term(&[]);
+    io.err_tty = false;
+    f.run(&mut io, "install zzqqnothing");
+    assert!(
+        io.err.starts_with("ifhf: No application matches"),
+        "{}",
+        io.err
+    );
+}
+
+#[test]
+fn tables_and_status_lines_are_coloured_on_a_terminal() {
+    let mut f = Fixture::new();
+    f.backend
+        .add_installed("com.spotify.Client", "Spotify", "flathub", "system");
+    f.backend.remotes.push(Remote {
+        name: "old".into(),
+        url: "u".into(),
+        scope: Scope::User,
+        enabled: false,
+    });
+    let mut io = term(&[]);
+    f.run(&mut io, "list");
+    assert!(
+        io.out.contains("\x1b[94mcom.spotify.Client"),
+        "ids are accented: {:?}",
+        io.out
+    );
+    assert!(strip(&io.out).starts_with("Name"));
+    let mut io = term(&[]);
+    f.run(&mut io, "remotes");
+    assert!(
+        io.out.contains("\x1b[32menabled") && io.out.contains("\x1b[31mdisabled"),
+        "{:?}",
+        io.out
+    );
+    let mut io = term(&[]);
+    f.run(&mut io, "updates");
+    assert!(strip(&io.out).starts_with("✓ Everything is up to date."));
+    let mut io = term(&[]);
+    f.run(&mut io, "sync");
+    let o = strip(&io.out);
+    assert!(
+        o.contains("→ Refreshing metadata…") && o.contains("✓ Metadata synchronised"),
+        "{o}"
+    );
+}
+
+#[test]
+fn stale_metadata_notes_are_flagged_with_a_warning_mark() {
+    let f = Fixture::new();
+    write_metadata(&f.system_dir(), "fedora", "<components><component>");
+    let mut io = term(&[]);
+    f.run(&mut io, "search spotify");
+    assert!(
+        strip(&io.err).starts_with("! Could not read metadata for remote 'fedora'"),
+        "{}",
+        io.err
+    );
+}
+
+#[test]
+fn help_on_a_terminal_is_styled() {
+    let f = Fixture::new();
+    let mut io = term(&[]);
+    f.run(&mut io, "--help");
+    assert!(io.out.contains("\x1b[1mUSAGE"), "{:?}", io.out);
+    assert_eq!(strip(&io.out), ifhf::cli::args::HELP);
+}
+
+#[test]
+fn a_cancel_is_quiet_on_a_terminal() {
+    let f = Fixture::new();
+    let mut io = term(&["n"]);
+    assert_eq!(f.run(&mut io, "install spotify"), 6);
+    assert_eq!(strip(&io.err), "Cancelled.\n", "{:?}", io.err);
+    assert!(
+        !io.err.contains("\x1b[31m") && !io.err.contains('✗'),
+        "no alarm colours: {:?}",
+        io.err
+    );
+    let mut io = TestIo::answering(&["n"]);
+    assert_eq!(f.run(&mut io, "install spotify"), 6);
+    assert_eq!(
+        io.err, "ifhf: Cancelled.\n",
+        "plain mode keeps the stable format"
+    );
+}
+
+#[test]
+fn only_genuine_rivals_are_offered_as_choices() {
+    let f = Fixture::new();
+    // "firefox" exact-matches two entries; every other app only matches weakly (or not at all).
+    let mut io = TestIo::answering(&["q"]);
+    assert_eq!(f.run(&mut io, "install firefox"), 6);
+    let shown = io
+        .out
+        .lines()
+        .filter(|l| {
+            l.contains('.')
+                && l.trim_start()
+                    .chars()
+                    .next()
+                    .is_some_and(|c| c.is_ascii_digit())
+        })
+        .count();
+    assert_eq!(shown, 2, "{}", io.out);
+    assert!(
+        io.asked[0].starts_with("Choose a result [1-2"),
+        "{:?}",
+        io.asked
+    );
+    // Lots of near-equal matches are capped, with a note.
+    let mut io = TestIo::non_interactive();
+    let apps: String = (0..14)
+        .map(|i| format!(r#"<component type="desktop-application"><id>org.t.Term{i}</id><name>Terminal {i}</name><summary>A terminal</summary><bundle type="flatpak">app/org.t.Term{i}/{}/stable</bundle></component>"#, ifhf::backend::traits::host_arch()))
+        .collect();
+    write_metadata(
+        &f.system_dir(),
+        "flathub",
+        &format!("<components>{apps}</components>"),
+    );
+    assert_eq!(f.run(&mut io, "install terminal --yes"), 4);
+    assert!(
+        io.err.contains("(4 more not shown; be more specific.)"),
+        "{}",
+        io.err
+    );
+}

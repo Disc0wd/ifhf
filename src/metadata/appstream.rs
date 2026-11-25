@@ -33,6 +33,8 @@ struct Rec {
     keywords: Vec<String>,
     homepage: Option<String>,
     developer: Option<String>,
+    /// Legacy `<developer_name>`; only used when `<developer><name>` is absent.
+    dev_name: Option<String>,
     bundle: Option<String>,
 }
 
@@ -82,7 +84,7 @@ fn finish(r: Rec, remote: &str, scope: Scope, host: &str) -> Option<App> {
         description: squash(&r.desc),
         keywords: r.keywords,
         homepage: r.homepage,
-        developer: r.developer,
+        developer: r.developer.or(r.dev_name),
         remote: remote.to_string(),
         branch,
         arch: arch.or_else(|| Some(host.to_string())),
@@ -184,7 +186,10 @@ pub fn parse(
                     [_, _, "url"] if homepage_url => {
                         r.homepage.get_or_insert_with(String::new).push_str(&text)
                     }
-                    [_, _, "developer_name"] | [_, _, "developer", "name"] => {
+                    [_, _, "developer_name"] => {
+                        r.dev_name.get_or_insert_with(String::new).push_str(&text)
+                    }
+                    [_, _, "developer", "name"] => {
                         r.developer.get_or_insert_with(String::new).push_str(&text)
                     }
                     [_, _, "bundle"] if flatpak_bundle => {
@@ -228,6 +233,7 @@ mod tests {
     <summary>Fast, Private &amp; Safe Web Browser</summary>
     <summary xml:lang="pl">Polski</summary>
     <developer_name>Mozilla</developer_name>
+    <developer><name>Mozilla</name></developer>
     <description><p>A <em>fast</em> browser.</p><ul><li>One</li><li>Two</li></ul></description>
     <description xml:lang="pl"><p>Po polsku</p></description>
     <url type="homepage">https://www.mozilla.org</url>

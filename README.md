@@ -62,6 +62,20 @@ Options (either position): `--remote <name>`, `--user` / `--system`, `--yes` (`-
 - Every ID and remote name is validated before it reaches a Flatpak command line, and arguments are
   passed as separate argv entries — never through a shell.
 
+### Terminal output
+
+On a terminal, output is dressed for reading: application IDs in the accent colour, a bar beside
+install/remove plans, `✓` for completed steps, `✗` for errors, tables with dim headers, `enabled`
+in green and `disabled` in red, and a quiet "Cancelled." when you answer no. Choice lists offer only
+the genuine rivals, not every weak match.
+
+- **Pipes and scripts get plain, stable text** (tab-separated tables, `Installed: A, B`, no escape
+  codes), exactly as before.
+- Colour is off with `--no-color`, `NO_COLOR`, `color = false` in the config, or when output is not
+  a terminal. The layout stays; only the escape codes go.
+- Symbols fall back to ASCII (`+`, `x`, `|`, `->`) on non-UTF-8 locales.
+- Errors are styled by whether *stderr* is a terminal, so `ifhf ... 2>log` stays plain.
+
 ### Scope
 
 The default scope is `user` (configurable). If the remote that provides an application is only

@@ -2,7 +2,7 @@ use super::Env;
 use super::args::{Command, HELP, Invocation, Opts};
 use crate::core::models::{App, Installed, Update};
 use crate::core::resolver::{
-    self, Candidate, MatchKind, ResolutionResult, ResolutionStatus, SearchOpts,
+    self, AMBIGUITY_MARGIN, Candidate, MatchKind, ResolutionResult, ResolutionStatus, SearchOpts,
 };
 use crate::core::service::{self, OpReport};
 use crate::error::{Error, Result};
@@ -16,7 +16,8 @@ pub fn execute(env: &mut Env, inv: Invocation) -> Result<()> {
     let Invocation { cmd, opts } = inv;
     match cmd {
         Command::Help => {
-            env.io.out(HELP);
+            let st = out_style(env, opts.no_color);
+            env.io.out(&output::help(HELP, st));
             Ok(())
         }
         Command::Version => {
@@ -28,24 +29,53 @@ pub fn execute(env: &mut Env, inv: Invocation) -> Result<()> {
         Command::Search(q) => search(env, &opts, &q),
         Command::Info(q) => info(env, &opts, &q),
         Command::List => list(env, &opts),
-        Command::Updates => updates(env),
+        Command::Updates => updates(env, &opts),
         Command::Update(q) => update(env, &opts, &q),
         Command::Sync => sync(env),
-        Command::Remotes => remotes(env),
+        Command::Remotes => remotes(env, &opts),
     }
 }
 
 fn style(env: &Env, opts: &Opts) -> Style {
+    out_style(env, opts.no_color)
+}
+
+/// Fancy layout on a terminal; colour only if config, `--no-color` and `NO_COLOR` allow it.
+fn out_style(env: &Env, no_color: bool) -> Style {
+    let fancy = env.io.stdout_is_tty();
     Style {
-        color: env.config.general.color && !opts.no_color && env.io.color_allowed(),
+        fancy,
+        color: fancy && env.config.general.color && !no_color && env.io.color_allowed(),
+        unicode: env.io.unicode(),
+    }
+}
+
+fn err_style(env: &Env) -> Style {
+    Style {
+        fancy: env.io.stderr_is_tty(),
+        color: env.io.stderr_is_tty() && env.config.general.color && env.io.stderr_color_allowed(),
+        unicode: env.io.unicode(),
+    }
+}
+
+fn notes(env: &mut Env, list: &[String]) {
+    let st = err_style(env);
+    for n in list {
+        env.io.err(&output::note(st, n));
+    }
+}
+
+fn ok_line(st: Style, text: &str) -> String {
+    if st.fancy {
+        format!("{} {text}\n", st.ok_mark())
+    } else {
+        format!("{text}\n")
     }
 }
 
 fn load_catalog(env: &mut Env) -> Result<Catalog> {
     let cat = metadata::load(env.backend, env.config, env.cache_dir.as_deref())?;
-    for n in &cat.notes {
-        env.io.err(&format!("Note: {n}\n"));
-    }
+    notes(env, &cat.notes);
     Ok(cat)
 }
 
@@ -84,7 +114,7 @@ fn effective_remote(env: &Env, opts: &Opts) -> Option<String> {
 }
 
 /// Ask `[Y/n]`; skipped with --yes or when the config disables this confirmation.
-fn confirm(env: &mut Env, question: &str, default_yes: bool, skip: bool) -> Result<()> {
+fn confirm(env: &mut Env, st: Style, question: &str, default_yes: bool, skip: bool) -> Result<()> {
     if skip {
         return Ok(());
     }
@@ -93,10 +123,9 @@ fn confirm(env: &mut Env, question: &str, default_yes: bool, skip: bool) -> Resu
             "Confirmation is required but input is not a terminal.\n\nRe-run with --yes to proceed without asking.".into(),
         ));
     }
-    let hint = if default_yes { "[Y/n]" } else { "[y/N]" };
     match env
         .io
-        .ask(&format!("{question} {hint} "))
+        .ask(&output::prompt(st, question, default_yes))
         .as_deref()
         .map(str::to_lowercase)
         .as_deref()
@@ -115,15 +144,23 @@ fn confirm(env: &mut Env, question: &str, default_yes: bool, skip: bool) -> Resu
 
 /// Let the user choose between similar matches. Never picks one on its own.
 fn pick(env: &mut Env, apps: &[App], res: &ResolutionResult, st: Style) -> Result<usize> {
-    let shown: &[Candidate] = &res.candidates[..res.candidates.len().min(MAX_CHOICES)];
+    // Only the genuine rivals are offered; weaker matches further down are noise, not choices.
+    let top = res.candidates[0].score;
+    let rivals: Vec<Candidate> = res
+        .candidates
+        .iter()
+        .copied()
+        .take_while(|c| c.score + AMBIGUITY_MARGIN > top)
+        .collect();
+    let shown: &[Candidate] = &rivals[..rivals.len().min(MAX_CHOICES)];
     let list = output::candidate_list(apps, shown, st);
-    let hidden = res.candidates.len() - shown.len();
+    let hidden = rivals.len() - shown.len();
     let more = if hidden > 0 {
         format!("({hidden} more not shown; be more specific.)\n")
     } else {
         String::new()
     };
-    let head = if res.candidates.len() > 1 {
+    let head = if rivals.len() > 1 {
         format!("Multiple applications match '{}':", res.query)
     } else {
         format!("'{}' is not an exact match. Closest result:", res.query)
@@ -133,7 +170,7 @@ fn pick(env: &mut Env, apps: &[App], res: &ResolutionResult, st: Style) -> Resul
             "{head}\n\n{list}{more}Specify an application ID, or narrow it with --remote / --user / --system."
         )));
     }
-    env.io.out(&format!("{head}\n\n{list}{more}"));
+    env.io.out(&format!("{}\n\n{list}{more}", st.bold(&head)));
     for _ in 0..3 {
         let prompt = format!("Choose a result [1-{}, q to cancel]: ", shown.len());
         let Some(ans) = env.io.ask(&prompt) else {
@@ -198,9 +235,9 @@ fn not_found(q: &str, remote: &Option<String>) -> Error {
     ))
 }
 
-fn report(env: &mut Env, verb: &str, action: &str, rep: &OpReport) -> Result<()> {
+fn report(env: &mut Env, st: Style, verb: &str, action: &str, rep: &OpReport) -> Result<()> {
     if !rep.done.is_empty() {
-        env.io.out(&format!("{verb}: {}\n", rep.done.join(", ")));
+        env.io.out(&output::done_lines(st, verb, &rep.done));
     }
     if rep.failed.is_empty() {
         return Ok(());
@@ -273,8 +310,10 @@ fn install(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
     });
     if !already.is_empty() {
         let names: Vec<String> = already.iter().map(service::label).collect();
-        env.io
-            .out(&format!("Already installed: {}\n", names.join(", ")));
+        env.io.out(&format!(
+            "{}\n",
+            st.dim(&format!("Already installed: {}", names.join(", ")))
+        ));
     }
     if chosen.is_empty() {
         return Ok(());
@@ -300,12 +339,13 @@ fn install(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
     };
     confirm(
         env,
+        st,
         &q,
         true,
         opts.yes || !env.config.general.confirm_install,
     )?;
     let rep = service::install(env.backend, &chosen);
-    report(env, "Installed", "install", &rep)
+    report(env, st, "Installed", "install", &rep)
 }
 
 fn remove(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
@@ -345,21 +385,7 @@ fn remove(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
         return Err(combine(problems));
     }
     let items: Vec<Installed> = chosen.iter().map(|&i| installed[i].clone()).collect();
-    let mut plan = String::from("The following will be removed:\n\n");
-    for i in &items {
-        plan.push_str(&format!(
-            "  {} ({}) [{}]\n",
-            st.bold(&i.name),
-            i.id,
-            i.installation
-        ));
-    }
-    plan.push('\n');
-    if opts.delete_data {
-        plan.push_str(&st.red("WARNING: --delete-data permanently deletes these applications' user data (settings, saved files).\n\n"));
-    } else {
-        plan.push_str("Application data is kept; reinstalling restores it.\n\n");
-    }
+    let plan = output::remove_plan(&items, opts.delete_data, st);
     env.io.out(&plan);
     let q = if items.len() == 1 {
         format!("Remove {}?", items[0].name)
@@ -368,12 +394,13 @@ fn remove(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
     };
     confirm(
         env,
+        st,
         &q,
         !opts.delete_data,
         opts.yes || (!env.config.general.confirm_remove && !opts.delete_data),
     )?;
     let rep = service::remove(env.backend, &items, opts.delete_data);
-    report(env, "Removed", "remove", &rep)
+    report(env, st, "Removed", "remove", &rep)
 }
 
 fn search(env: &mut Env, opts: &Opts, query: &str) -> Result<()> {
@@ -395,9 +422,12 @@ fn search(env: &mut Env, opts: &Opts, query: &str) -> Result<()> {
     env.io.out(&output::search_results(&cat.apps, shown, st));
     if shown.len() < cands.len() {
         env.io.out(&format!(
-            "Showing {} of {} results. Use --limit 0 to show all.\n",
-            shown.len(),
-            cands.len()
+            "{}\n",
+            st.dim(&format!(
+                "Showing {} of {} results. Use --limit 0 to show all.",
+                shown.len(),
+                cands.len()
+            ))
         ));
     }
     Ok(())
@@ -497,14 +527,17 @@ fn list(env: &mut Env, opts: &Opts) -> Result<()> {
         &table,
         pretty,
         st,
+        &|col, c| match col {
+            0 => st.bold(c),
+            1 => st.id(c),
+            _ => st.dim(c),
+        },
     ));
     Ok(())
 }
 
-fn remotes(env: &mut Env) -> Result<()> {
-    let st = Style {
-        color: env.config.general.color && env.io.color_allowed(),
-    };
+fn remotes(env: &mut Env, opts: &Opts) -> Result<()> {
+    let st = style(env, opts);
     let rows: Vec<Vec<String>> = env
         .backend
         .remotes()?
@@ -524,14 +557,17 @@ fn remotes(env: &mut Env) -> Result<()> {
         &rows,
         pretty,
         st,
+        &|col, c| match (col, c) {
+            (0, _) => st.bold(c),
+            (2, "enabled") => st.green(c),
+            (2, _) => st.red(c),
+            _ => st.dim(c),
+        },
     ));
     Ok(())
 }
 
-fn show_updates(env: &mut Env, ups: &[&Update]) {
-    let st = Style {
-        color: env.config.general.color && env.io.color_allowed(),
-    };
+fn show_updates(env: &mut Env, st: Style, ups: &[&Update]) {
     let rows: Vec<Vec<String>> = ups
         .iter()
         .map(|u| {
@@ -558,16 +594,22 @@ fn show_updates(env: &mut Env, ups: &[&Update]) {
         &rows,
         pretty,
         st,
+        &|col, c| match col {
+            0 => st.bold(c),
+            1 => st.id(c),
+            _ => st.dim(c),
+        },
     ));
 }
 
-fn updates(env: &mut Env) -> Result<()> {
+fn updates(env: &mut Env, opts: &Opts) -> Result<()> {
+    let st = style(env, opts);
     let ups = env.backend.updates()?;
     if ups.is_empty() {
-        env.io.out("Everything is up to date.\n");
+        env.io.out(&ok_line(st, "Everything is up to date."));
         return Ok(());
     }
-    show_updates(env, &ups.iter().collect::<Vec<_>>());
+    show_updates(env, st, &ups.iter().collect::<Vec<_>>());
     Ok(())
 }
 
@@ -638,15 +680,17 @@ fn update(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
     }
     if selected.is_empty() {
         if up_to_date.is_empty() {
-            env.io.out("Everything is up to date.\n");
+            env.io.out(&ok_line(st, "Everything is up to date."));
         }
         return Ok(());
     }
-    env.io
-        .out(&format!("{} update(s) available:\n\n", selected.len()));
-    show_updates(env, &selected);
+    env.io.out(&format!(
+        "{}\n\n",
+        st.bold(&format!("{} update(s) available:", selected.len()))
+    ));
+    show_updates(env, st, &selected);
     env.io.out("\n");
-    confirm(env, "Apply these updates?", true, opts.yes)?;
+    confirm(env, st, "Apply these updates?", true, opts.yes)?;
     let mut by_inst: std::collections::BTreeMap<String, Vec<(String, String)>> = Default::default();
     for u in &selected {
         by_inst
@@ -666,19 +710,26 @@ fn update(env: &mut Env, opts: &Opts, queries: &[String]) -> Result<()> {
         })
         .collect();
     let rep = service::update(env.backend, &targets);
-    report(env, "Updated", "update", &rep)
+    report(env, st, "Updated", "update", &rep)
 }
 
 fn sync(env: &mut Env) -> Result<()> {
-    env.io.out("Refreshing metadata...\n");
+    let st = out_style(env, false);
+    if st.fancy {
+        env.io
+            .out(&format!("{} Refreshing metadata…\n", st.step_mark()));
+    } else {
+        env.io.out("Refreshing metadata...\n");
+    }
     env.backend.sync()?;
     let cat = metadata::refresh(env.backend, env.config, env.cache_dir.as_deref())?;
-    for n in &cat.notes {
-        env.io.err(&format!("Note: {n}\n"));
-    }
-    env.io.out(&format!(
-        "Metadata synchronised: {} applications indexed.\n",
-        cat.apps.len()
+    notes(env, &cat.notes);
+    env.io.out(&ok_line(
+        st,
+        &format!(
+            "Metadata synchronised: {} applications indexed.",
+            cat.apps.len()
+        ),
     ));
     Ok(())
 }

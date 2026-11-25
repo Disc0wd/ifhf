@@ -15,7 +15,27 @@ pub trait Io {
     /// Can we prompt the user (stdin is a terminal)?
     fn interactive(&self) -> bool;
     fn stdout_is_tty(&self) -> bool;
+    /// Colour on stdout is allowed (a terminal and `NO_COLOR` unset).
     fn color_allowed(&self) -> bool;
+    fn stderr_is_tty(&self) -> bool;
+    fn stderr_color_allowed(&self) -> bool;
+    /// Safe to print symbols such as ✓ and ┃ (UTF-8 locale); otherwise ASCII is used.
+    fn unicode(&self) -> bool;
+}
+
+fn no_color_env() -> bool {
+    std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty())
+}
+
+fn utf8_locale() -> bool {
+    ["LC_ALL", "LC_CTYPE", "LANG"]
+        .iter()
+        .filter_map(|k| std::env::var(k).ok())
+        .find(|v| !v.is_empty())
+        .is_some_and(|v| {
+            let v = v.to_ascii_lowercase();
+            v.contains("utf-8") || v.contains("utf8")
+        })
 }
 
 pub struct StdIo;
@@ -49,7 +69,16 @@ impl Io for StdIo {
         std::io::stdout().is_terminal()
     }
     fn color_allowed(&self) -> bool {
-        self.stdout_is_tty() && std::env::var_os("NO_COLOR").is_none_or(|v| v.is_empty())
+        self.stdout_is_tty() && !no_color_env()
+    }
+    fn stderr_is_tty(&self) -> bool {
+        std::io::stderr().is_terminal()
+    }
+    fn stderr_color_allowed(&self) -> bool {
+        self.stderr_is_tty() && !no_color_env()
+    }
+    fn unicode(&self) -> bool {
+        utf8_locale()
     }
 }
 
@@ -66,13 +95,22 @@ pub fn run(args: &[String], env: &mut Env) -> i32 {
     match result {
         Ok(()) => 0,
         Err(e) => {
-            let msg = format!("{e}");
             let tail = if matches!(e, crate::error::Error::Usage(_)) {
                 "\n\nTry: ifhf --help"
             } else {
                 ""
             };
-            env.io.err(&format!("ifhf: {msg}{tail}\n"));
+            let fancy = env.io.stderr_is_tty();
+            let st = crate::output::Style {
+                fancy,
+                color: fancy && env.config.general.color && env.io.stderr_color_allowed(),
+                unicode: env.io.unicode(),
+            };
+            if matches!(e, crate::error::Error::Aborted) {
+                env.io.err(&crate::output::cancelled(st));
+            } else {
+                env.io.err(&crate::output::error(st, &e.to_string(), tail));
+            }
             e.exit_code()
         }
     }

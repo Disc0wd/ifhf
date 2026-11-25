@@ -14,6 +14,10 @@ pub struct TestIo {
     pub asked: Vec<String>,
     pub interactive: bool,
     pub tty: bool,
+    /// Colour allowed on stdout / stderr, stderr is a terminal, UTF-8 locale.
+    pub color: bool,
+    pub err_tty: bool,
+    pub utf8: bool,
 }
 
 impl TestIo {
@@ -25,6 +29,9 @@ impl TestIo {
             asked: vec![],
             interactive: false,
             tty: false,
+            color: false,
+            err_tty: false,
+            utf8: true,
         }
     }
     pub fn answering(a: &[&str]) -> Self {
@@ -54,7 +61,16 @@ impl Io for TestIo {
         self.tty
     }
     fn color_allowed(&self) -> bool {
-        false
+        self.tty && self.color
+    }
+    fn stderr_is_tty(&self) -> bool {
+        self.err_tty
+    }
+    fn stderr_color_allowed(&self) -> bool {
+        self.err_tty && self.color
+    }
+    fn unicode(&self) -> bool {
+        self.utf8
     }
 }
 

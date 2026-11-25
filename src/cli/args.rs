@@ -304,15 +304,16 @@ COMMANDS                                   PACMAN
   remotes            Show configured remotes
 
 OPTIONS
-  --remote <name>    Only consider this remote
-  --user, --system   Choose the installation (default: your config, normally user)
-  --yes, --noconfirm Do not ask for confirmation (required when not on a terminal)
-  --delete-data      With remove: also delete the application's user data
-  --all              With list/remove: include runtimes and other refs
-  --search <text>    With list: filter installed applications
-  --limit <n>        With search: show at most n results (default 25, 0 = all)
-  --no-color         Disable colour (NO_COLOR is also respected)
-  -h, --help         Show this help        -V, --version  Show the version
+  --remote <name>      Only consider this remote
+  --user, --system     Choose the installation (default: your config, normally user)
+  --yes, --noconfirm   Do not ask for confirmation (required when not on a terminal)
+  --delete-data        With remove: also delete the application's user data
+  --all                With list/remove: include runtimes and other refs
+  --search <text>      With list: filter installed applications
+  --limit <n>          With search: show at most n results (default 25, 0 = all)
+  --no-color           Disable colour (NO_COLOR is also respected)
+  -h, --help           Show this help
+  -V, --version        Show the version
 
 EXIT STATUS
   0 success   1 failure   2 usage error   3 not found

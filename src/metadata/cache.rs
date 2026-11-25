@@ -12,9 +12,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-/// The IFHF version is part of the header: a new release may parse metadata differently, so an
-/// index written by another version is ignored and rebuilt.
-const MAGIC: &str = concat!("IFHF-INDEX\t1\t", env!("CARGO_PKG_VERSION"));
+/// The IFHF version and a parser revision are part of the header: a new release (or a change to
+/// how AppStream is parsed) may produce different records, so an index written by anything else is
+/// ignored and rebuilt. Bump `r<N>` whenever `metadata::appstream` output changes.
+const MAGIC: &str = concat!("IFHF-INDEX\t1\t", env!("CARGO_PKG_VERSION"), "\tr2");
 const KW_SEP: char = '\u{1f}';
 
 #[derive(Debug, Clone, PartialEq, Eq)]
