@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ifhf: Flatpak search in milliseconds</title>
+<title>ifhf: I fucking hate Flatpak (search in milliseconds)</title>
 <meta name="description" content="A command line for Flatpak that installs, removes and searches apps by name. Search takes 11 ms instead of 2.35 s.">
 <meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b1015" media="(prefers-color-scheme: dark)">
@@ -134,12 +134,16 @@ footer nav{display:flex;gap:1.4rem;flex-wrap:wrap}
 }
 @media (prefers-reduced-motion:reduce){.wait::after{animation:none}}
 @media print{.replay{display:none}}
+
+.brand{display:flex;align-items:baseline;gap:.35rem 1rem;flex-wrap:wrap}
+.aka{color:var(--mute);font-size:.92rem}
+@media (max-width:40rem){.top{flex-direction:column;align-items:flex-start;gap:.7rem}.family,.top nav{gap:.5rem 1.1rem;flex-wrap:wrap}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <a class="mark" href="#" aria-label="ifhf, top of page">ifhf</a>
+    <div class="brand"><a class="mark" href="#" aria-label="ifhf, top of page">ifhf</a><span class="aka">I fucking hate Flatpak</span></div>
     <nav aria-label="Project"><a href="https://github.com/Disc0wd/ifhf">Source</a><a href="https://github.com/Disc0wd/ifhf/blob/main/README.md">Docs</a><a href="https://github.com/Disc0wd/ifhf/blob/main/bench/RESULTS.md">Benchmarks</a></nav>
   </div>
 

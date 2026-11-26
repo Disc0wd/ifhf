@@ -1,5 +1,7 @@
 # IFHF
 
+*I fucking hate Flatpak.*
+
 A friendly command-line frontend for [Flatpak](https://flatpak.org). Install, remove and search
 applications by ordinary name instead of memorising application IDs and remote names.
 
