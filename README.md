@@ -71,6 +71,8 @@ install/remove plans, `✓` for completed steps, `✗` for errors, tables with d
 in green and `disabled` in red, and a quiet "Cancelled." when you answer no. Choice lists offer only
 the genuine rivals, not every weak match.
 
+- **Outside text cannot drive your terminal.** App names and descriptions from remotes and from
+  Flatpak are stripped of control characters.
 - **Pipes and scripts get plain, stable text** (tab-separated tables, `Installed: A, B`, no escape
   codes), exactly as before.
 - Colour is off with `--no-color`, `NO_COLOR`, `color = false` in the config, or when output is not

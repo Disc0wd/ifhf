@@ -15,7 +15,7 @@ use std::time::UNIX_EPOCH;
 /// The IFHF version and a parser revision are part of the header: a new release (or a change to
 /// how AppStream is parsed) may produce different records, so an index written by anything else is
 /// ignored and rebuilt. Bump `r<N>` whenever `metadata::appstream` output changes.
-const MAGIC: &str = concat!("IFHF-INDEX\t1\t", env!("CARGO_PKG_VERSION"), "\tr2");
+const MAGIC: &str = concat!("IFHF-INDEX\t1\t", env!("CARGO_PKG_VERSION"), "\tr3");
 const KW_SEP: char = '\u{1f}';
 
 #[derive(Debug, Clone, PartialEq, Eq)]

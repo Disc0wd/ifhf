@@ -57,7 +57,7 @@ impl FlatpakCli {
                 err.trim()
             )));
         }
-        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+        Ok(printable(&String::from_utf8_lossy(&out.stdout)))
     }
 
     /// Run with the terminal attached so the user sees Flatpak's own progress.
@@ -75,6 +75,14 @@ impl FlatpakCli {
             )))
         }
     }
+}
+
+/// Flatpak's listings include names chosen by app publishers: keep the tabs and newlines that
+/// separate fields, drop every other control character before it can reach the terminal.
+fn printable(s: &str) -> String {
+    s.chars()
+        .filter(|c| !c.is_control() || matches!(c, '\t' | '\n'))
+        .collect()
 }
 
 fn s(v: &[&str]) -> Vec<String> {
@@ -286,6 +294,11 @@ impl FlatpakCli {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn listings_keep_their_separators_and_lose_escapes() {
+        assert_eq!(printable("a\tb\u{1b}[2Jc\u{7}\nd\r"), "a\tb[2Jc\nd");
+    }
 
     #[test]
     fn install_argv() {

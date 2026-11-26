@@ -76,20 +76,26 @@ fn finish(r: Rec, remote: &str, scope: Scope, host: &str) -> Option<App> {
     if arch.as_deref().is_some_and(|a| a != host) {
         return None;
     }
-    let squash = |s: &str| s.split_whitespace().collect::<Vec<_>>().join(" ");
+    // Remote metadata is shown on the user's terminal: collapse whitespace, then drop every other
+    // control character (`&#x1b;` would otherwise start an escape sequence).
+    let squash = |s: &str| printable(&s.split_whitespace().collect::<Vec<_>>().join(" "));
     Some(App {
         id,
         name: squash(&r.name),
         summary: squash(&r.summary),
         description: squash(&r.desc),
-        keywords: r.keywords,
-        homepage: r.homepage,
-        developer: r.developer.or(r.dev_name),
+        keywords: r.keywords.iter().map(|k| squash(k)).collect(),
+        homepage: r.homepage.map(|h| squash(&h)),
+        developer: r.developer.or(r.dev_name).map(|d| squash(&d)),
         remote: remote.to_string(),
-        branch,
+        branch: branch.map(|b| printable(&b)),
         arch: arch.or_else(|| Some(host.to_string())),
         scope,
     })
+}
+
+fn printable(s: &str) -> String {
+    s.chars().filter(|c| !c.is_control()).collect()
 }
 
 pub fn parse(
@@ -223,6 +229,27 @@ pub fn parse(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn remote_text_cannot_carry_terminal_escapes() {
+        let xml = r#"<components><component type="desktop-application">
+<id>org.example.App</id><name>Ev&#x1b;[2Jil</name><summary>a&#x7;b</summary>
+<developer_name>d&#x9b;v</developer_name><url type="homepage">https://x&#x1b;]0;t</url>
+<keywords><keyword>k&#x1b;w</keyword></keywords></component></components>"#;
+        let (apps, _) = parse(xml.as_bytes(), "r", Scope::System, "x86_64").unwrap();
+        let a = &apps[0];
+        let all = format!(
+            "{}{}{:?}{:?}{}",
+            a.name,
+            a.summary,
+            a.developer,
+            a.homepage,
+            a.keywords.concat()
+        );
+        assert_eq!(a.name, "Ev[2Jil");
+        assert!(!all.chars().any(char::is_control), "{all:?}");
+        assert!(!all.contains("\\u{"), "{all}");
+    }
 
     const XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <components version="0.8" origin="flatpak">
