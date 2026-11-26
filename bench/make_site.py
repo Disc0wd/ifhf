@@ -86,7 +86,8 @@ for line in open(os.path.join(res, "15_memory.md")):
 
 TEMPLATE = open(os.path.join(root, "bench", "site_template.html")).read()
 page = (
-    TEMPLATE.replace("@@REPO@@", repo)
+    TEMPLATE.replace("@@CSS@@", open(os.path.join(root, "site", "style.css")).read())
+    .replace("@@REPO@@", repo)
     .replace("@@ROWS@@", "\n".join(rows))
     .replace("@@FL_SEC@@", f"{fl_search:.2f}")
     .replace("@@FL_MS@@", f"{fl_search * 1000:.0f}")

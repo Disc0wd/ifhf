@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#0b1015" media="(prefers-color-scheme: dark)">
 <link rel="preload" href="fonts/SchibstedGrotesk.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+
 @font-face{font-family:"Schibsted Grotesk";src:url(fonts/SchibstedGrotesk.woff2) format("woff2");font-weight:400 800;font-display:swap}
 @font-face{font-family:"JetBrains Mono";src:url(fonts/JetBrainsMono.woff2) format("woff2");font-weight:400 700;font-display:swap}
 
@@ -135,16 +136,59 @@ footer nav{display:flex;gap:1.4rem;flex-wrap:wrap}
 @media (prefers-reduced-motion:reduce){.wait::after{animation:none}}
 @media print{.replay{display:none}}
 
+/* ---- shared by the ifhx and ifhai pages ---- */
+.family{display:flex;gap:1.2rem;flex-wrap:wrap;color:var(--mute);font-size:.95rem}
+.family a{color:var(--mute);text-decoration:none}
+.family a:hover{color:var(--ink);text-decoration:underline}
+.family a[aria-current]{color:var(--ink);font-weight:650}
+.solo{display:block;margin:clamp(2rem,5vw,3.2rem) 0 .8rem;background:var(--term);color:var(--term-ink);border:1px solid var(--term-rule);border-radius:.5rem;overflow:hidden}
+.solo .out{min-height:0}
+.out .c{color:var(--term-mute)}
+.out .ok{color:#7be3a8}
+.out .a{color:var(--term-accent)}
+.vs .out{min-height:14.5rem}
+.vs .clock{font-size:clamp(1.2rem,2.6vw,1.7rem)}
+.tools{list-style:none;margin:1.4rem 0 0;padding:0;border-top:1px solid var(--rule)}
+.tool{display:grid;grid-template-columns:8rem minmax(0,1fr) auto;gap:.3rem 1.6rem;align-items:baseline;padding:1.05rem 0;border-bottom:1px solid var(--rule)}
+.tool .n{font:700 1.2rem var(--mono);color:var(--accent-ink)}
+.tool p{margin:0;max-width:34rem}
+.tool .cmd{font:500 .84rem var(--mono);color:var(--mute);white-space:nowrap}
+.tool .links{grid-column:2/-1;font-size:.92rem;color:var(--mute)}
+.tool .links a{margin-right:1rem}
+.tbl{width:100%;border-collapse:collapse;margin:1rem 0 0}
+.tbl th,.tbl td{text-align:left;padding:.6rem 1rem .6rem 0;border-bottom:1px solid var(--rule);vertical-align:top}
+.tbl th{font-weight:600;color:var(--mute);font-size:.85rem}
+.tbl td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl caption{text-align:left;font-weight:650;padding:.2rem 0 .1rem}
+.good{color:var(--accent-ink);font-weight:650}
+.bad{color:var(--warn);font-weight:650}
+.points{margin:1.2rem 0 0;padding-left:1.2rem;max-width:42rem}
+.points li{margin:.35rem 0}
+.note{color:var(--mute);font-size:.92rem;max-width:42rem}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.6rem clamp(1.5rem,5vw,4rem);margin-top:1.4rem}
+.two p{margin:0;max-width:34rem}
+.two b{display:block;font-weight:650;margin-bottom:.1rem}
+@media (max-width:56rem){.tool{grid-template-columns:1fr}.tool .links{grid-column:1}.two{grid-template-columns:1fr}.tbl{font-size:.92rem}}
+/* terminal blocks scroll sideways on narrow screens instead of clipping; install snippets get full width */
+.out{overflow-x:auto}
+.get{max-width:none}
+.get pre{white-space:pre;overflow-wrap:normal}
+.lbl{font:650 .95rem var(--sans);color:var(--term-ink)}
+.vs{grid-template-columns:minmax(0,1.1fr) minmax(0,1.25fr)}
+.vs .out{font-size:.76rem}
+@media (max-width:56rem){.vs{grid-template-columns:1fr}.vs .out{font-size:.8rem}}
+
 .brand{display:flex;align-items:baseline;gap:.35rem 1rem;flex-wrap:wrap}
 .aka{color:var(--mute);font-size:.92rem}
 @media (max-width:40rem){.top{flex-direction:column;align-items:flex-start;gap:.7rem}.family,.top nav{gap:.5rem 1.1rem;flex-wrap:wrap}}
+
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
     <div class="brand"><a class="mark" href="#" aria-label="ifhf, top of page">ifhf</a><span class="aka">I fucking hate Flatpak</span></div>
-    <nav aria-label="Project"><a href="https://github.com/Disc0wd/ifhf">Source</a><a href="https://github.com/Disc0wd/ifhf/blob/main/README.md">Docs</a><a href="https://github.com/Disc0wd/ifhf/blob/main/bench/RESULTS.md">Benchmarks</a></nav>
+    <nav class="family" aria-label="The IFHX family"><a href="https://disc0wd.github.io/ifhf/" aria-current="page">ifhf</a><a href="https://disc0wd.github.io/ifhai/">ifhai</a><a href="https://disc0wd.github.io/ifhx/">ifhx</a><a href="https://github.com/Disc0wd/ifhf">Source</a></nav>
   </div>
 
   <main>
@@ -179,11 +223,14 @@ Firefox
     <p class="race-note"><span>Timings are hyperfine means on a 2020 laptop. The left clock runs in real time.</span><button class="replay" id="replay" type="button">Run it again</button></p>
 
     <div class="get">
-      <pre><span># needs Rust and flatpak</span>
-git clone https://github.com/Disc0wd/ifhf.git &amp;&amp; cd ifhf
-cargo build --release
-install -Dm755 target/release/ifhf ~/.local/bin/ifhf</pre>
-      <p class="fine">Flatpak still downloads, verifies and installs everything. ifhf adds no daemon and no server.</p>
+      <pre><span># with ifhx, the suite manager</span>
+ifhx install ifhf
+
+<span># or directly</span>
+curl -fsSLO https://github.com/Disc0wd/ifhf/releases/latest/download/ifhf-x86_64-linux
+curl -fsSL  https://github.com/Disc0wd/ifhf/releases/latest/download/ifhf-x86_64-linux.sha256 | sha256sum -c -
+install -Dm755 ifhf-x86_64-linux ~/.local/bin/ifhf</pre>
+      <p class="fine">Or <code>cargo install --git https://github.com/Disc0wd/ifhf</code>. Needs Flatpak; ifhf adds no daemon and no server. Linux; release binaries are x86_64.</p>
     </div>
   </div>
 
@@ -324,7 +371,7 @@ with --remote / --user / --system.
   </section>
 
   <section aria-labelledby="h-rules">
-    <h2 id="h-rules">What it refuses to do.</h2>
+    <h2 id="h-rules">Careful by default.</h2>
     <ul class="rules">
       <li><b>Bypass Flatpak.</b><span>Signatures, permissions and deployment stay Flatpak's job. ifhf never touches OSTree.</span></li>
       <li><b>Run your input through a shell.</b><span>Every ID and remote name is validated, and arguments reach Flatpak as separate argv entries.</span></li>
@@ -337,8 +384,8 @@ with --remote / --user / --system.
   </main>
 
   <footer>
-    <span>MIT licensed. Part of the IFHX family. Written in Rust.</span>
-    <nav aria-label="Links"><a href="https://github.com/Disc0wd/ifhf">Source</a><a href="https://github.com/Disc0wd/ifhf/blob/main/README.md">README</a><a href="https://github.com/Disc0wd/ifhf/blob/main/LICENSE">Licence</a><a href="https://disc0wd.github.io/ifhx/">ifhx</a><a href="https://disc0wd.github.io/ifhai/">ifhai</a><a href="https://github.com/Disc0wd/ifhf/blob/main/docs/DECISIONS.md">Design decisions</a><a href="https://github.com/Disc0wd/ifhf/blob/main/bench/RESULTS.md">Full benchmarks</a></nav>
+    <span>MIT licensed. Written in Rust. Part of the IFHX family.</span>
+    <nav aria-label="Links"><a href="https://github.com/Disc0wd/ifhf">Source</a><a href="https://github.com/Disc0wd/ifhf/blob/main/README.md">README</a><a href="https://github.com/Disc0wd/ifhf/blob/main/LICENSE">Licence</a><a href="https://github.com/Disc0wd/ifhf/blob/main/docs/DECISIONS.md">Design decisions</a><a href="https://github.com/Disc0wd/ifhf/blob/main/bench/RESULTS.md">Full benchmarks</a></nav>
   </footer>
 </div>
 
