@@ -36,7 +36,6 @@ versioning) are implemented. Interactive TUI mode (spec 3.3, explicitly not requ
 
 - Interactive TUI (`ifhf` with no arguments prints help).
 - Native libflatpak backend (not justified by measurements).
-- LICENSE file (the project owner has not chosen one).
 - `flatpak search` ranks differently from IFHF; they are not expected to return identical order.
 
 ## Measured performance trade-offs

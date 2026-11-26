@@ -192,4 +192,8 @@ decisions, measured trade-offs and deviations from the specification.
 - Apps whose remote ships no AppStream metadata cannot be found by name (exact IDs still need
   metadata to resolve).
 - No interactive TUI yet (spec: not required for the first release).
-- No LICENSE file has been chosen yet.
+
+## Licence
+
+[MIT](LICENSE). Use, copy, modify and redistribute this code for any purpose, including commercial
+use, as long as the copyright notice and licence text stay with it (that notice is the credit).
